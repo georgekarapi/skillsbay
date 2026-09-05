@@ -18,7 +18,10 @@ function ToggleGroup({
       data-slot="toggle-group"
       data-variant={variant}
       data-size={size}
-      className={cn("inline-flex w-fit items-center rounded-lg border bg-muted/40 p-1", className)}
+      className={cn(
+        "inline-flex w-fit items-center rounded-lg border border-border/60 bg-muted/40 p-1 dark:border-border/40 dark:bg-muted/20",
+        className,
+      )}
       {...props}
     />
   )
@@ -39,7 +42,9 @@ function ToggleGroupItem({
       data-size={size}
       className={cn(
         buttonVariants({ variant: "ghost", size }),
-        "rounded-md border-0 text-muted-foreground hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm",
+        "rounded-md border-0 text-muted-foreground transition-colors hover:bg-transparent hover:text-foreground",
+        "data-[state=on]:bg-background data-[state=on]:font-semibold data-[state=on]:text-foreground data-[state=on]:shadow-xs",
+        "dark:data-[state=on]:bg-muted/90 dark:data-[state=on]:text-foreground dark:data-[state=on]:shadow-xs",
         className,
       )}
       {...props}
@@ -48,5 +53,7 @@ function ToggleGroupItem({
     </ToggleGroupPrimitive.Item>
   )
 }
+
+
 
 export { ToggleGroup, ToggleGroupItem }

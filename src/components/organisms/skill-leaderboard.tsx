@@ -1,6 +1,7 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Search } from "lucide-react"
+import { cn } from "cn"
 import { getMarketplaceSkills } from "@/lib/marketplace-api"
 import { Input } from "@/components/ui/input"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
@@ -55,6 +56,10 @@ export function SkillLeaderboard({ tab: controlledTab, onTabChange }: SkillLeade
     return () => window.removeEventListener("resize", updateIndicator)
   }, [tab])
 
+  const itemStateClass = indicator
+    ? "data-[state=on]:border-transparent data-[state=on]:bg-transparent data-[state=on]:shadow-none dark:data-[state=on]:border-transparent dark:data-[state=on]:bg-transparent dark:data-[state=on]:shadow-none"
+    : "data-[state=on]:border-border/60 data-[state=on]:bg-background data-[state=on]:shadow-xs dark:data-[state=on]:border-border/60 dark:data-[state=on]:bg-muted/90 dark:data-[state=on]:shadow-xs"
+
   return (
     <section>
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -62,7 +67,7 @@ export function SkillLeaderboard({ tab: controlledTab, onTabChange }: SkillLeade
           <div ref={toggleGroupRef}>
             <ToggleGroup
               aria-label="Skill ranking"
-              className="relative"
+              className="relative border-border/60 bg-muted/40 dark:border-border/40 dark:bg-muted/20"
               type="single"
               value={tab}
               onValueChange={(value) => {
@@ -72,26 +77,35 @@ export function SkillLeaderboard({ tab: controlledTab, onTabChange }: SkillLeade
               {indicator && (
                 <span
                   aria-hidden="true"
-                  className="pointer-events-none absolute inset-y-1 left-0 z-0 rounded-md bg-background shadow-sm transition-[transform,width] duration-200 ease-out will-change-transform"
+                  className="pointer-events-none absolute inset-y-1 left-0 z-0 rounded-md border border-border/60 bg-background shadow-xs transition-[transform,width] duration-200 ease-out will-change-transform dark:border-border/60 dark:bg-muted/90 dark:shadow-xs"
                   style={{ width: indicator.width, transform: `translateX(${indicator.x}px)` }}
                 />
               )}
               <ToggleGroupItem
-                className="relative z-10 h-7 px-3 text-xs font-medium data-[state=on]:bg-transparent data-[state=on]:shadow-none"
+                className={cn(
+                  "relative z-10 h-7 px-3 text-xs font-medium text-muted-foreground/70 transition-colors hover:text-foreground data-[state=on]:font-semibold data-[state=on]:text-foreground dark:text-muted-foreground/70 dark:hover:text-foreground dark:data-[state=on]:text-foreground",
+                  itemStateClass,
+                )}
                 data-skill-tab="trending"
                 value="trending"
               >
                 Trending
               </ToggleGroupItem>
               <ToggleGroupItem
-                className="relative z-10 h-7 px-3 text-xs font-medium data-[state=on]:bg-transparent data-[state=on]:shadow-none"
+                className={cn(
+                  "relative z-10 h-7 px-3 text-xs font-medium text-muted-foreground/70 transition-colors hover:text-foreground data-[state=on]:font-semibold data-[state=on]:text-foreground dark:text-muted-foreground/70 dark:hover:text-foreground dark:data-[state=on]:text-foreground",
+                  itemStateClass,
+                )}
                 data-skill-tab="top"
                 value="top"
               >
                 Top
               </ToggleGroupItem>
               <ToggleGroupItem
-                className="relative z-10 h-7 px-3 text-xs font-medium data-[state=on]:bg-transparent data-[state=on]:shadow-none"
+                className={cn(
+                  "relative z-10 h-7 px-3 text-xs font-medium text-muted-foreground/70 transition-colors hover:text-foreground data-[state=on]:font-semibold data-[state=on]:text-foreground dark:text-muted-foreground/70 dark:hover:text-foreground dark:data-[state=on]:text-foreground",
+                  itemStateClass,
+                )}
                 data-skill-tab="new"
                 value="new"
               >
