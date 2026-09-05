@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { ArrowRight, Check, Copy, Terminal } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import { getMarketplaceSkills } from "@/lib/marketplace-api"
 
-const SAMPLE_SKILLS = [
+const FALLBACK_SKILLS = [
   { slug: "thegraph/substreams-deployer", label: "substreams-deployer", price: "0.25 USDC" },
   { slug: "defi/audited-automation", label: "audited-automation", price: "0.80 USDC" },
   { slug: "solidity/incident-response", label: "incident-response", price: "1.20 USDC" },
@@ -15,17 +17,30 @@ export function HeroSection() {
   const [isPaused, setIsPaused] = useState(false)
   const [copied, setCopied] = useState(false)
 
-  const activeSkill = SAMPLE_SKILLS[selectedIndex]
+  const marketplace = useQuery({ queryKey: ["marketplace-skills"], queryFn: getMarketplaceSkills })
+  const skillsData = marketplace.data?.skills
+  const skills = useMemo(() => {
+    if (skillsData && skillsData.length > 0) {
+      return skillsData.slice(0, 5).map((item) => ({
+        slug: item.id,
+        label: item.slug,
+        price: `${item.priceUsdc} USDC`,
+      }))
+    }
+    return FALLBACK_SKILLS
+  }, [skillsData])
+
+  const activeSkill = skills[selectedIndex % skills.length] ?? FALLBACK_SKILLS[0]
   const command = `npx skillsbay add ${activeSkill.slug}`
 
   // Cycle package selection every 3.5s unless hovered or just copied
   useEffect(() => {
-    if (isPaused || copied) return
+    if (isPaused || copied || skills.length <= 1) return
     const timer = window.setInterval(() => {
-      setSelectedIndex((prev) => (prev + 1) % SAMPLE_SKILLS.length)
+      setSelectedIndex((prev) => (prev + 1) % skills.length)
     }, 3500)
     return () => window.clearInterval(timer)
-  }, [isPaused, copied])
+  }, [isPaused, copied, skills.length])
 
   const copyCommand = async () => {
     try {
@@ -115,10 +130,10 @@ export function HeroSection() {
             {/* Terminal Window Header */}
             <div className="mb-3.5 flex items-center justify-between border-b pb-3">
               <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5" aria-hidden="true">
-                  <div className="size-2.5 rounded-full bg-muted-foreground/25" />
-                  <div className="size-2.5 rounded-full bg-muted-foreground/25" />
-                  <div className="size-2.5 rounded-full bg-muted-foreground/25" />
+                <div className="flex items-center gap-2" aria-hidden="true">
+                  <div className="size-3 rounded-full bg-[#ff5f56] border border-[#e0443e]/50 shadow-xs" />
+                  <div className="size-3 rounded-full bg-[#ffbd2e] border border-[#dea123]/50 shadow-xs" />
+                  <div className="size-3 rounded-full bg-[#27c93f] border border-[#1aab29]/50 shadow-xs" />
                 </div>
                 <div className="ml-2 flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
                   <Terminal className="size-3" />
@@ -149,8 +164,8 @@ export function HeroSection() {
 
             {/* Skill Preset Tabs with auto-cycling */}
             <div className="mb-3 flex items-center gap-1.5 overflow-x-auto pb-0.5 text-[11px]">
-              {SAMPLE_SKILLS.map((item, index) => {
-                const isActive = index === selectedIndex
+              {skills.map((item, index) => {
+                const isActive = index === (selectedIndex % skills.length)
                 return (
                   <button
                     key={item.slug}
@@ -186,13 +201,18 @@ export function HeroSection() {
                 <div className="flex items-center gap-2">
                   <span className="select-none text-muted-foreground/60 font-mono">$</span>
                   <span className="text-foreground font-mono">npx skillsbay add</span>
-                  <span className="font-semibold text-primary font-mono">
-                    {activeSkill.slug}
-                  </span>
-                  <span
-                    aria-hidden="true"
-                    className="inline-block h-3.5 w-1.5 animate-pulse bg-primary/70 align-middle"
-                  />
+                  <div className="inline-flex items-center">
+                    <span
+                      key={activeSkill.slug}
+                      className="animate-terminal-cycle inline-block font-semibold text-primary font-mono"
+                    >
+                      {activeSkill.slug}
+                    </span>
+                    <span
+                      aria-hidden="true"
+                      className="ml-1 inline-block h-3.5 w-1.5 animate-pulse bg-primary/70 align-middle"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -203,7 +223,10 @@ export function HeroSection() {
                 <Check className="size-3" />
                 Receipt verified onchain
               </span>
-              <span className="rounded bg-muted/50 px-1.5 py-0.5 text-foreground/80 font-medium">
+              <span
+                key={activeSkill.price}
+                className="animate-terminal-cycle inline-block rounded bg-muted/50 px-1.5 py-0.5 text-foreground/80 font-medium"
+              >
                 {activeSkill.price}
               </span>
             </div>

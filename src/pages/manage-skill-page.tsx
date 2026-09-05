@@ -4,7 +4,6 @@ import { ArrowLeft, BarChart3, Check, CircleDollarSign, Pencil, Save } from "luc
 import { encodeFunctionData, keccak256, parseAbi, stringToHex } from "viem"
 import { Link, useParams } from "react-router-dom"
 import { toast } from "sonner"
-import { skills as demoSkills } from "@/data/mock-marketplace"
 import { useAuthorAuth } from "@/components/providers/author-auth-context"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -59,10 +58,10 @@ export function ManageSkillPage() {
   const skillId = `${namespace}/${slug}`
   const author = useAuthorAuth()
   const marketplace = useQuery({ queryKey: ["marketplace-skills"], queryFn: getMarketplaceSkills })
-  const skill = marketplace.data?.skills.find((item) => item.id === skillId) ?? demoSkills.find((item) => item.id === skillId) ?? demoSkills[0]
-  const [price, setPrice] = useState(skill.priceUsdc)
-  const [savedMarkdown, setSavedMarkdown] = useState(() => skillMarkdown(skill.id))
-  const [markdown, setMarkdown] = useState(() => skillMarkdown(skill.id))
+  const skill = marketplace.data?.skills.find((item) => item.id === skillId)
+  const [price, setPrice] = useState(skill?.priceUsdc ?? "0.25")
+  const [savedMarkdown, setSavedMarkdown] = useState(() => skill ? skillMarkdown(skill.id) : "")
+  const [markdown, setMarkdown] = useState(() => skill ? skillMarkdown(skill.id) : "")
   const [editMode, setEditMode] = useState(false)
   const [loadingEditor, setLoadingEditor] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -70,18 +69,20 @@ export function ManageSkillPage() {
   const canSave = Boolean(author.authenticated && author.walletAddress && author.signMessage && author.sendTransaction && registryAddress)
   const lines = useMemo(() => lineDiff(savedMarkdown, markdown), [savedMarkdown, markdown])
   const hasMarkdownChanges = savedMarkdown !== markdown
-  const generatedRevenue = (Number(skill.priceUsdc) * skill.paidInstalls * 0.95).toFixed(2)
+  const generatedRevenue = skill ? (Number(skill.priceUsdc) * skill.paidInstalls * 0.95).toFixed(2) : "0.00"
   const installsByDay = [42, 67, 58, 91, 84, 112, 138]
   const maxInstalls = Math.max(...installsByDay)
 
   useEffect(() => {
+    if (!skill) return
     const initial = skillMarkdown(skill.id)
     setPrice(skill.priceUsdc)
     setSavedMarkdown(initial)
     setMarkdown(initial)
-  }, [skill.id, skill.priceUsdc])
+  }, [skill?.id, skill?.priceUsdc])
 
   async function beginEditing() {
+    if (!skill) return
     if (!author.authenticated) return author.login()
     if (!author.walletAddress || !author.signMessage) { toast.error("Connect your Privy embedded wallet to edit this skill."); return }
     setLoadingEditor(true)
@@ -98,6 +99,7 @@ export function ManageSkillPage() {
   }
 
   async function uploadBundle() {
+    if (!skill) return
     const issuedAt = new Date().toISOString()
     const contentSha256 = await sha256Hex(markdown)
     const message = createPublishAuthorizationMessage({ skillId: skill.id, author: author.walletAddress!, contentSha256, issuedAt })
@@ -107,6 +109,7 @@ export function ManageSkillPage() {
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (!skill) return
     if (!author.authenticated) return author.login()
     if (!canSave || !registryAddress) return
     if (!markdown.startsWith("---")) { toast.error("SKILL.md needs YAML frontmatter beginning with ---."); return }
@@ -124,6 +127,27 @@ export function ManageSkillPage() {
       const description = error instanceof Error ? error.message : "Please try again."
       toast.error("Skill was not updated", { description })
     } finally { setSaving(false) }
+  }
+
+  if (marketplace.isLoading) {
+    return (
+      <MarketplaceShell>
+        <Link className="mb-7 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground" to="/dashboard"><ArrowLeft className="size-4" /> Author dashboard</Link>
+        <div className="py-16 text-center text-sm text-muted-foreground">Loading skill details…</div>
+      </MarketplaceShell>
+    )
+  }
+
+  if (!skill) {
+    return (
+      <MarketplaceShell>
+        <Link className="mb-7 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground" to="/dashboard"><ArrowLeft className="size-4" /> Author dashboard</Link>
+        <div className="rounded-xl border bg-card p-12 text-center">
+          <h2 className="text-xl font-semibold">Skill not found</h2>
+          <p className="mt-2 text-sm text-muted-foreground">The skill “{skillId}” could not be found in the registry.</p>
+        </div>
+      </MarketplaceShell>
+    )
   }
 
   return <MarketplaceShell>

@@ -1,7 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Search } from "lucide-react"
-import { skills } from "@/data/mock-marketplace"
 import { getMarketplaceSkills } from "@/lib/marketplace-api"
 import { Input } from "@/components/ui/input"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
@@ -16,11 +15,9 @@ export function SkillLeaderboard() {
   const [indicator, setIndicator] = useState<{ width: number; x: number } | null>(null)
   const toggleGroupRef = useRef<HTMLDivElement>(null)
   const marketplace = useQuery({ queryKey: ["marketplace-skills"], queryFn: getMarketplaceSkills })
-  const allSkills = (marketplace.data?.skills && marketplace.data.skills.length > 0)
-    ? marketplace.data.skills
-    : (import.meta.env.DEV ? skills : [])
-  const hasLiveGraphData = marketplace.data?.source === "graph" && (marketplace.data?.skills?.length ?? 0) > 0
-  const isDemoData = marketplace.data?.source === "demo"
+  const allSkills = marketplace.data?.skills ?? []
+  const hasLiveGraphData = marketplace.data?.source === "graph" && allSkills.length > 0
+  const isDbData = marketplace.data?.source === "db"
   const filtered = useMemo(() => {
     const matchingSkills = allSkills.filter((skill) =>
       `${skill.title} ${skill.namespace} ${skill.category}`.toLowerCase().includes(query.toLowerCase()),
@@ -88,13 +85,24 @@ export function SkillLeaderboard() {
             </ToggleGroup>
           </div>
 
-          <span className="hidden items-center gap-1.5 text-xs text-muted-foreground md:inline-flex"><StatusDot className={hasLiveGraphData ? undefined : "bg-amber-500"} /> {hasLiveGraphData ? "Live Graph index" : isDemoData ? "Local demo data" : "Graph index pending"}</span>
+          <span className="hidden items-center gap-1.5 text-xs text-muted-foreground md:inline-flex">
+            <StatusDot className={hasLiveGraphData ? undefined : isDbData ? "bg-emerald-500" : "bg-amber-500"} />
+            {hasLiveGraphData ? "Live Graph index" : isDbData ? "Local database" : "Graph index pending"}
+          </span>
         </div>
         <div className="relative sm:w-64"><Search className="pointer-events-none absolute left-2.5 top-2.5 size-4 text-muted-foreground" /><Input value={query} onChange={(event) => setQuery(event.target.value)} className="h-9 pl-8 text-sm" placeholder="Search skills" /></div>
       </div>
       <div className="overflow-hidden rounded-xl border bg-card">
         <div className="hidden grid-cols-[2.25rem_minmax(0,1fr)_7rem_6.5rem_5rem] gap-3 border-b bg-muted/35 px-5 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground sm:grid"><span>#</span><span>Skill</span><span>Price</span><span className="text-right">Installs</span><span>Trend</span></div>
-        {marketplace.isLoading ? <div className="px-5 py-14 text-center text-sm text-muted-foreground">Loading marketplace data…</div> : filtered.length ? filtered.map((skill) => <SkillRow key={skill.id} skill={skill} />) : <div className="px-5 py-14 text-center text-sm text-muted-foreground">No skills match “{query}”.</div>}
+        {marketplace.isLoading ? (
+          <div className="px-5 py-14 text-center text-sm text-muted-foreground">Loading marketplace data…</div>
+        ) : filtered.length ? (
+          filtered.map((skill) => <SkillRow key={skill.id} skill={skill} />)
+        ) : (
+          <div className="px-5 py-14 text-center text-sm text-muted-foreground">
+            {query ? `No skills match “${query}”.` : "No skills found. Run the local database seeder to populate skills."}
+          </div>
+        )}
       </div>
       {marketplace.isError && <p className="mt-3 text-xs text-muted-foreground">The marketplace index is temporarily unavailable.</p>}
     </section>

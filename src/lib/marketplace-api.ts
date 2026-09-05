@@ -25,7 +25,7 @@ function normalizeSkill(skill: ApiListing, index: number): Skill {
 export async function getMarketplaceSkills() {
   const response = await fetch(endpoint("/v1/skills"))
   if (!response.ok) throw new Error(`Marketplace request failed (${response.status})`)
-  const payload = await response.json() as { data: ApiListing[]; source?: "graph" | "demo" | "unavailable" }
+  const payload = await response.json() as { data: ApiListing[]; source?: "graph" | "db" | "unavailable" }
   return { skills: payload.data.map(normalizeSkill), source: payload.source ?? "unavailable" }
 }
 
@@ -59,7 +59,7 @@ export async function completeInstallRequest(id: string, buyer: string) {
 export async function getAuthorDashboard(address: string) {
   const response = await fetch(endpoint(`/v1/authors/${address}`))
   if (!response.ok) throw new Error(`Author dashboard request failed (${response.status})`)
-  const payload = await response.json() as { data: AuthorDashboardData; source?: "graph" | "demo" | "unavailable" }
+  const payload = await response.json() as { data: AuthorDashboardData; source?: "graph" | "db" | "unavailable" }
   return { data: payload.data, source: payload.source ?? "unavailable" }
 }
 

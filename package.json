@@ -9,6 +9,7 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "db:migrate:local": "wrangler d1 migrations apply skillsbay --local",
+    "db:seed:local": "wrangler d1 execute skillsbay --local --file=db/seed.sql",
     "deploy:registry": "cd packages/contracts && ./script/deploy-registry.sh",
     "deploy:worker": "pnpm build && wrangler deploy",
     "deploy": "pnpm build && wrangler deploy",
