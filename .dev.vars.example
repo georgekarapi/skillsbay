@@ -1,0 +1,30 @@
+# Optional: protects the server-to-server /v1/internal/bundles endpoint only.
+# Browser publishing uses a Privy embedded-wallet signature instead. Leave blank
+# unless another trusted backend will use this endpoint.
+INTERNAL_PUBLISH_TOKEN=
+
+# Optional public Graph endpoint and authentication token.
+GRAPH_API_URL=
+GRAPH_API_KEY=
+
+# The deployed SkillRegistry on Base Sepolia. The x402 recipient must be the
+# same address: the registry immediately sends 95% USDC to the author and 5%
+# to the platform treasury.
+SKILL_REGISTRY_ADDRESS=
+X402_RECIPIENT_ADDRESS=
+
+# Required by the post-settlement Circle Paymaster recorder. The recorder key
+# controls an EIP-7702 smart account, which pays Base Sepolia gas in USDC.
+# A public Base Sepolia RPC default is declared in wrangler.jsonc. Set this only
+# to override it locally or use a provider endpoint (keep provider URLs with
+# embedded API keys secret).
+BASE_SEPOLIA_RPC_URL=
+RECORDER_PRIVATE_KEY=
+# Optional overrides. The shown values are the Circle Paymaster v0.8 and
+# Circle test USDC defaults for Base Sepolia. A Pimlico public bundler is used
+# when BUNDLER_RPC_URL is empty. Treat a provider URL with an embedded API key
+# as a secret.
+BUNDLER_RPC_URL=
+CIRCLE_PAYMASTER_ADDRESS=0x3BA9A96eE3eFf3A69E2B18886AcF52027EFF8966
+CIRCLE_PAYMASTER_PERMIT_USDC=10000000
+USDC_ADDRESS=0x036CbD53842c5426634e7929541eC2318f3dCF7e

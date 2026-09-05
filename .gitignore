@@ -1,0 +1,57 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Runtime configuration and credentials. Only committed example templates are safe.
+.env
+.env.*
+*.env
+!.env.example
+!.env.*.example
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+keystore/
+keys/
+secrets/
+
+# Local Cloudflare emulator data can contain D1 records, R2 bundles, and traces.
+.wrangler/
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+
+# Foundry build and broadcast output. Broadcast files may include transaction data.
+packages/contracts/out/
+packages/contracts/cache/
+packages/contracts/broadcast/
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+*storybook.log
+storybook-static

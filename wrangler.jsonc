@@ -1,0 +1,33 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "skillsbay",
+	"main": "./worker/index.ts",
+	"compatibility_date": "2026-09-04",
+	"assets": {
+		"not_found_handling": "single-page-application",
+		"run_worker_first": [
+			"/v1/*"
+		],
+	},
+	"vars": {
+		"APP_ENV": "production",
+		"BASE_SEPOLIA_RPC_URL": "https://sepolia.base.org",
+		"GRAPH_API_URL": "https://api.studio.thegraph.com/query/89068/skillsbay-base-sepolia/v0.1.0",
+		"SKILL_REGISTRY_ADDRESS": "0x5b8A22f1dc11f38333469BEBd6d6Fe2852eA3f1D",
+		"X402_RECIPIENT_ADDRESS": "0x5b8A22f1dc11f38333469BEBd6d6Fe2852eA3f1D",
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "skillsbay",
+			"database_id": "247cbbb3-c931-4547-8b2e-31d114b13cea",
+			"migrations_dir": "db/migrations",
+		},
+	],
+	"r2_buckets": [
+		{
+			"binding": "SKILL_BUNDLES",
+			"bucket_name": "skillsbay-skill-bundles",
+		},
+	],
+}
