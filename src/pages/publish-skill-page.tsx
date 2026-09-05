@@ -18,10 +18,11 @@ const initialMarkdown = "---\nname: substreams-deployer\ndescription: Build and 
 const skillNamePattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
 function parseUsdc(value: string) {
-  if (!/^\d+(?:\.\d{1,6})?$/.test(value)) throw new Error("Enter a USDC price with up to six decimals.")
+  if (!/^\d+(?:\.\d{1,2})?$/.test(value)) throw new Error("Enter a USDC price with up to 2 decimal places.")
   const [whole, fraction = ""] = value.split(".")
   const amount = BigInt(whole) * 1_000_000n + BigInt((fraction + "000000").slice(0, 6))
-  if (amount <= 0n || amount > (2n ** 96n - 1n)) throw new Error("Enter a valid positive USDC price.")
+  if (amount < 200_000n) throw new Error("Price must be at least $0.20 USDC.")
+  if (amount > (2n ** 96n - 1n)) throw new Error("Enter a valid USDC price.")
   return amount
 }
 
@@ -38,7 +39,7 @@ export function PublishSkillPage() {
   const author = useAuthorAuth()
   const navigate = useNavigate()
   const [title, setTitle] = useState("")
-  const [price, setPrice] = useState("15")
+  const [price, setPrice] = useState("15.00")
   const [markdown, setMarkdown] = useState(initialMarkdown)
   const [publishing, setPublishing] = useState(false)
   const registryAddress = import.meta.env.VITE_SKILL_REGISTRY_ADDRESS as string | undefined
@@ -105,5 +106,5 @@ export function PublishSkillPage() {
             : !author.signMessage || !author.sendTransaction ? "Preparing Privy wallet…"
               : "Register & publish"
   const generatedSlug = title.trim().toLowerCase()
-  return <MarketplaceShell><Link className="mb-7 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground" to="/dashboard"><ArrowLeft className="size-4" /> Author dashboard</Link><div className="mx-auto max-w-2xl"><p className="text-xs font-medium uppercase tracking-[0.16em] text-primary">New skill</p><h1 className="mt-1 text-3xl font-semibold tracking-[-0.04em]">Publish a single SKILL.md</h1><p className="mt-2 text-sm leading-6 text-muted-foreground">Your embedded wallet registers metadata on Base Sepolia, then signs the encrypted bundle upload to SkillsBay.</p><Card className="mt-7"><CardHeader><CardTitle>Skill details</CardTitle><CardDescription>Published as <span className="font-mono">{namespace ?? (profile.isLoading ? "…" : "your-username")}/{generatedSlug || "skill-title"}</span> · starts at version 1.</CardDescription></CardHeader><CardContent><form className="grid gap-5" onSubmit={publish}><label className="grid gap-2 text-sm font-medium">Skill title<Input value={title} onChange={(event) => setTitle(event.target.value.toLowerCase())} placeholder="substreams-deployer" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" autoCapitalize="none" required /><span className="text-xs font-normal text-muted-foreground">Lowercase letters, numbers, and hyphens only. Spaces are not allowed.</span></label><label className="grid gap-2 text-sm font-medium">Price (USDC)<Input value={price} onChange={(event) => setPrice(event.target.value)} inputMode="decimal" required /></label><label className="grid gap-2 text-sm font-medium">SKILL.md<Textarea className="min-h-72 font-mono text-xs leading-5" value={markdown} onChange={(event) => setMarkdown(event.target.value)} required /></label><div className="flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-2 text-xs text-muted-foreground"><LockKeyhole className="size-3.5" /> One encrypted bundle · 95% author royalty</div><Button disabled={publishing || (author.authenticated && Boolean(namespace) && !canPublish)} type="submit">{submitLabel}</Button></div></form></CardContent></Card></div></MarketplaceShell>
+  return <MarketplaceShell><Link className="mb-7 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground" to="/dashboard"><ArrowLeft className="size-4" /> Author dashboard</Link><div className="mx-auto max-w-2xl"><p className="text-xs font-medium uppercase tracking-[0.16em] text-primary">New skill</p><h1 className="mt-1 text-3xl font-semibold tracking-[-0.04em]">Publish a single SKILL.md</h1><p className="mt-2 text-sm leading-6 text-muted-foreground">Your embedded wallet registers metadata on Base Sepolia, then signs the encrypted bundle upload to SkillsBay.</p><Card className="mt-7"><CardHeader><CardTitle>Skill details</CardTitle><CardDescription>Published as <span className="font-mono">{namespace ?? (profile.isLoading ? "…" : "your-username")}/{generatedSlug || "skill-title"}</span> · starts at version 1.</CardDescription></CardHeader><CardContent><form className="grid gap-5" onSubmit={publish}><label className="grid gap-2 text-sm font-medium">Skill title<Input value={title} onChange={(event) => setTitle(event.target.value.toLowerCase())} placeholder="substreams-deployer" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" autoCapitalize="none" required /><span className="text-xs font-normal text-muted-foreground">Lowercase letters, numbers, and hyphens only. Spaces are not allowed.</span></label><label className="grid gap-2 text-sm font-medium">Price (USDC)<Input value={price} onChange={(event) => setPrice(event.target.value)} inputMode="decimal" min="0.20" step="0.01" required /><span className="text-xs font-normal text-muted-foreground">Minimum $0.20</span></label><label className="grid gap-2 text-sm font-medium">SKILL.md<Textarea className="min-h-72 font-mono text-xs leading-5" value={markdown} onChange={(event) => setMarkdown(event.target.value)} required /></label><div className="flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-2 text-xs text-muted-foreground"><LockKeyhole className="size-3.5" /> One encrypted bundle · 95% author royalty</div><Button disabled={publishing || (author.authenticated && Boolean(namespace) && !canPublish)} type="submit">{submitLabel}</Button></div></form></CardContent></Card></div></MarketplaceShell>
 }
