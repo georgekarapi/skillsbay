@@ -44,10 +44,14 @@ export function SkillLeaderboard({ tab: controlledTab, onTabChange }: SkillLeade
   useLayoutEffect(() => {
     const updateIndicator = () => {
       const activeItem = toggleGroupRef.current?.querySelector<HTMLElement>(`[data-skill-tab="${tab}"]`)
-      if (activeItem) setIndicator({ width: activeItem.offsetWidth, x: activeItem.offsetLeft })
+      if (activeItem) {
+        const width = activeItem.offsetWidth
+        const x = activeItem.offsetLeft
+        setIndicator((prev) => (prev?.width === width && prev?.x === x ? prev : { width, x }))
+      }
     }
     updateIndicator()
-    window.addEventListener("resize", updateIndicator)
+    window.addEventListener("resize", updateIndicator, { passive: true })
     return () => window.removeEventListener("resize", updateIndicator)
   }, [tab])
 
@@ -68,7 +72,7 @@ export function SkillLeaderboard({ tab: controlledTab, onTabChange }: SkillLeade
               {indicator && (
                 <span
                   aria-hidden="true"
-                  className="pointer-events-none absolute inset-y-1 left-0 z-0 rounded-md bg-background shadow-sm transition-[transform,width] duration-200 ease-out"
+                  className="pointer-events-none absolute inset-y-1 left-0 z-0 rounded-md bg-background shadow-sm transition-[transform,width] duration-200 ease-out will-change-transform"
                   style={{ width: indicator.width, transform: `translateX(${indicator.x}px)` }}
                 />
               )}
@@ -98,7 +102,7 @@ export function SkillLeaderboard({ tab: controlledTab, onTabChange }: SkillLeade
         </div>
         <div className="relative sm:w-64"><Search className="pointer-events-none absolute left-2.5 top-2.5 size-4 text-muted-foreground" /><Input value={query} onChange={(event) => setQuery(event.target.value)} className="h-9 pl-8 text-sm" placeholder="Search skills" /></div>
       </div>
-      <div className="overflow-hidden rounded-xl border bg-card">
+      <div className="overflow-hidden rounded-xl border bg-card [content-visibility:auto] [contain-intrinsic-size:auto_400px]">
         <div className="hidden grid-cols-[2.25rem_minmax(0,1fr)_7rem_6.5rem_5rem] gap-3 border-b bg-muted/35 px-5 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground sm:grid"><span>#</span><span>Skill</span><span>Price</span><span className="text-right">Installs</span><span>Trend</span></div>
         {marketplace.isLoading ? (
           <div className="px-5 py-14 text-center text-sm text-muted-foreground">Loading marketplace data…</div>

@@ -8,7 +8,7 @@ import { privateKeyToAccount } from "viem/accounts"
 import { createBundlerClient, toSimple7702SmartAccount } from "viem/account-abstraction"
 import { baseSepolia } from "viem/chains"
 import { getBundle, putBundle } from "./storage"
-import { createBundleReadAuthorizationMessage, createPublishAuthorizationMessage, createUsernameAuthorizationMessage } from "../shared/publish-authorization"
+import { createBundleReadAuthorizationMessage, createInstallRequestAuthorizationMessage, createPublishAuthorizationMessage, createUsernameAuthorizationMessage } from "../shared/publish-authorization"
 
 type Bindings = {
   APP_ENV: string
@@ -166,7 +166,7 @@ function safeErrorMessage(error: unknown) {
 
 const skillRegistryAbi = parseAbi([
   "function recordPurchase(bytes32 skillId, address buyer, uint256 amount, bytes32 paymentTxHash)",
-  "function getSkill(bytes32 skillId) view returns (address author, uint96 price, uint32 majorVersion, bool active, string metadataURI)",
+  "function getSkill(bytes32 skillId) view returns ((address author, uint96 price, uint32 majorVersion, bool active, string metadataURI) skill)",
   "function processedPaymentTransactions(bytes32 paymentTxHash) view returns (bool)",
   "function hasPurchased(bytes32 skillId, address buyer) view returns (bool)",
   "function recorder() view returns (address)",
@@ -192,7 +192,7 @@ async function registeredAuthor(env: Bindings, skillId: string) {
   if (!env.SKILL_REGISTRY_ADDRESS || !env.BASE_SEPOLIA_RPC_URL) return null
   const client = createPublicClient({ transport: http(env.BASE_SEPOLIA_RPC_URL) })
   const skill = await client.readContract({ address: env.SKILL_REGISTRY_ADDRESS as `0x${string}`, abi: skillRegistryAbi, functionName: "getSkill", args: [keccak256(stringToHex(skillId))] })
-  return skill[0]
+  return skill.author
 }
 
 async function recordPurchase(env: Bindings, input: { skillId: string; buyer: string; amount: string; paymentTransactionHash: string }) {
@@ -279,12 +279,20 @@ app.get("/v1/install-requests/:id", async (c) => {
 app.post("/v1/install-requests/:id/complete", async (c) => {
   if (!c.env.SKILL_REGISTRY_ADDRESS || !c.env.BASE_SEPOLIA_RPC_URL) return c.json({ error: "Registry verification is not configured" }, 503)
   const request = await c.env.DB.prepare("SELECT id, skill_id, status, expires_at FROM install_requests WHERE id = ?").bind(c.req.param("id")).first<{ id: string; skill_id: string; status: "pending" | "completed"; expires_at: string }>()
-  const payload = await c.req.json<{ buyer?: string }>().catch(() => ({}))
-  if (!request || request.status !== "pending" || Date.parse(request.expires_at) <= Date.now() || !payload.buyer || !isWalletAddress(payload.buyer)) return c.json({ error: "Install request is invalid or expired" }, 400)
+  const payload = await c.req.json<{ buyer?: string; issuedAt?: string; signature?: string }>().catch(() => ({}))
+  if (!request || request.status !== "pending" || Date.parse(request.expires_at) <= Date.now() || !payload.buyer || !isWalletAddress(payload.buyer) || !payload.issuedAt || !payload.signature) return c.json({ error: "A signed entitled wallet is required" }, 400)
+  const issuedAt = Date.parse(payload.issuedAt)
+  if (!Number.isFinite(issuedAt) || Math.abs(Date.now() - issuedAt) > 10 * 60 * 1_000) return c.json({ error: "Install authorization expired; sign again" }, 401)
+  const buyer = payload.buyer.toLowerCase()
+  const message = createInstallRequestAuthorizationMessage({ installRequestId: request.id, skillId: request.skill_id, buyer, issuedAt: payload.issuedAt })
+  if (!await verifyMessage({ address: buyer as `0x${string}`, message, signature: payload.signature as `0x${string}` })) return c.json({ error: "Invalid install authorization" }, 401)
   const client = createPublicClient({ chain: baseSepolia, transport: http(c.env.BASE_SEPOLIA_RPC_URL) })
-  const purchased = await client.readContract({ address: c.env.SKILL_REGISTRY_ADDRESS as `0x${string}`, abi: skillRegistryAbi, functionName: "hasPurchased", args: [keccak256(stringToHex(request.skill_id)), payload.buyer as `0x${string}`] })
-  if (!purchased) return c.json({ error: "This wallet has not purchased the requested skill" }, 403)
-  await c.env.DB.prepare("UPDATE install_requests SET status = 'completed', buyer_address = ? WHERE id = ?").bind(payload.buyer.toLowerCase(), request.id).run()
+  const [purchased, chainAuthor] = await Promise.all([
+    client.readContract({ address: c.env.SKILL_REGISTRY_ADDRESS as `0x${string}`, abi: skillRegistryAbi, functionName: "hasPurchased", args: [keccak256(stringToHex(request.skill_id)), buyer as `0x${string}`] }),
+    registeredAuthor(c.env, request.skill_id),
+  ])
+  if (!purchased && chainAuthor?.toLowerCase() !== buyer) return c.json({ error: "This wallet does not have access to the requested skill" }, 403)
+  await c.env.DB.prepare("UPDATE install_requests SET status = 'completed', buyer_address = ? WHERE id = ?").bind(buyer, request.id).run()
   return c.json({ data: { status: "completed", skillId: request.skill_id } })
 })
 app.post("/v1/install-requests/:namespace/:slug", async (c) => {
@@ -302,8 +310,12 @@ app.get("/v1/skills/:namespace/:slug/access/:buyer", async (c) => {
   const buyer = c.req.param("buyer")
   if (!splitSkillId(skillId) || !isWalletAddress(buyer)) return c.json({ error: "Invalid skill or wallet" }, 400)
   const client = createPublicClient({ chain: baseSepolia, transport: http(c.env.BASE_SEPOLIA_RPC_URL) })
-  const purchased = await client.readContract({ address: c.env.SKILL_REGISTRY_ADDRESS as `0x${string}`, abi: skillRegistryAbi, functionName: "hasPurchased", args: [keccak256(stringToHex(skillId)), buyer as `0x${string}`] })
-  return c.json({ data: { purchased } })
+  const [purchased, chainAuthor] = await Promise.all([
+    client.readContract({ address: c.env.SKILL_REGISTRY_ADDRESS as `0x${string}`, abi: skillRegistryAbi, functionName: "hasPurchased", args: [keccak256(stringToHex(skillId)), buyer as `0x${string}`] }),
+    registeredAuthor(c.env, skillId),
+  ])
+  const author = chainAuthor?.toLowerCase() === buyer.toLowerCase()
+  return c.json({ data: { purchased: purchased || author, access: author ? "author" : purchased ? "purchase" : null } })
 })
 app.post("/v1/purchases/:namespace/:slug", async (c) => {
   const skillId = skillIdFromParams(c.req)

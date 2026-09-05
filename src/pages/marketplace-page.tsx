@@ -27,18 +27,19 @@ function AnimatedWord({ word }: { word: string }) {
   }, [prev])
 
   return (
-    <span className="relative inline-flex h-7 items-center overflow-hidden font-semibold text-primary transition-[width] duration-280 ease-out">
+    <span className="relative inline-flex h-7 items-center overflow-hidden font-semibold text-primary">
       {prev && (
         <span
           key={`prev-${prev}`}
-          className="absolute inset-0 flex items-center animate-slide-up-out whitespace-nowrap"
+          aria-hidden="true"
+          className="absolute inset-0 flex items-center animate-slide-up-out whitespace-nowrap will-change-transform"
         >
           {prev}
         </span>
       )}
       <span
         key={`curr-${current}`}
-        className={`inline-flex items-center whitespace-nowrap ${
+        className={`inline-flex items-center whitespace-nowrap will-change-transform ${
           prev ? "animate-slide-up-in" : ""
         }`}
       >

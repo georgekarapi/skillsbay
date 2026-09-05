@@ -35,6 +35,24 @@ export function createBundleReadAuthorizationMessage(input: BundleReadAuthorizat
   ].join("\n")
 }
 
+export type InstallRequestAuthorization = {
+  installRequestId: string
+  skillId: string
+  buyer: string
+  issuedAt: string
+}
+
+/** Proves that the wallet entitled to a bundle explicitly unlocks this one CLI install. */
+export function createInstallRequestAuthorizationMessage(input: InstallRequestAuthorization) {
+  return [
+    "SkillsBay install authorization",
+    `Install request: ${input.installRequestId}`,
+    `Skill: ${input.skillId}`,
+    `Wallet: ${input.buyer.toLowerCase()}`,
+    `Issued at: ${input.issuedAt}`,
+  ].join("\n")
+}
+
 export type UsernameAuthorization = {
   walletAddress: string
   username: string

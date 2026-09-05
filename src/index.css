@@ -85,16 +85,17 @@ button, input, textarea, select { font: inherit; }
 @keyframes terminal-cycle {
   0% {
     opacity: 0;
-    transform: translateY(3px);
+    transform: translate3d(0, 3px, 0);
   }
   100% {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
   }
 }
 
 .animate-terminal-cycle {
-  animation: terminal-cycle 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: terminal-cycle 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -105,32 +106,34 @@ button, input, textarea, select { font: inherit; }
 
 @keyframes slide-up-in {
   0% {
-    transform: translateY(100%);
+    transform: translate3d(0, 100%, 0);
     opacity: 0;
   }
   100% {
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
     opacity: 1;
   }
 }
 
 @keyframes slide-up-out {
   0% {
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
     opacity: 1;
   }
   100% {
-    transform: translateY(-100%);
+    transform: translate3d(0, -100%, 0);
     opacity: 0;
   }
 }
 
 .animate-slide-up-in {
-  animation: slide-up-in 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: slide-up-in 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
 }
 
 .animate-slide-up-out {
-  animation: slide-up-out 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: slide-up-out 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
 }
 
 @media (prefers-reduced-motion: reduce) {

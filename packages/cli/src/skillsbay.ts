@@ -108,7 +108,7 @@ export async function paymentFetch() {
   if (!privateKey) throw new Error('SKILLSBAY_PRIVATE_KEY is required for wallet payment');
   const client = new x402Client();
   registerExactEvmScheme(client, {
-    signer: privateKeyToAccount(privateKey as `0x${string}`),
+    signer: privateKeyToAccount(normalizePrivateKey(privateKey)),
     networks: ['eip155:84532'],
   });
   return wrapFetchWithPayment(fetch, client);
@@ -164,6 +164,37 @@ export async function completeWalletPayment(skillId: string): Promise<string> {
   }
   if (!response.ok) throw new Error(`${response.status} ${await response.text()}`);
   return response.text();
+}
+
+function normalizePrivateKey(privateKey: string): `0x${string}` {
+  return (privateKey.startsWith('0x') ? privateKey : `0x${privateKey}`) as `0x${string}`;
+}
+
+function authorBundleReadMessage(skillId: string, author: string, issuedAt: string) {
+  return [
+    'SkillsBay bundle read authorization',
+    `Skill: ${skillId}`,
+    `Author: ${author.toLowerCase()}`,
+    `Issued at: ${issuedAt}`,
+  ].join('\n');
+}
+
+/** Returns the private bundle without payment when this agent wallet is its on-chain author. */
+export async function getAuthorBundleFromWallet(skillId: string): Promise<string | null> {
+  const privateKey = process.env.SKILLSBAY_PRIVATE_KEY;
+  if (!privateKey) return null;
+  const account = privateKeyToAccount(normalizePrivateKey(privateKey));
+  const issuedAt = new Date().toISOString();
+  const signature = await account.signMessage({ message: authorBundleReadMessage(skillId, account.address, issuedAt) });
+  const response = await fetch(endpoint(`/v1/publish/bundles/${skillId}/read`), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ author: account.address, issuedAt, signature }),
+  });
+  if (response.status === 403) return null;
+  if (!response.ok) throw new Error(`${response.status} ${await response.text()}`);
+  const payload = (await response.json()) as { data: { markdown: string } };
+  return payload.data.markdown;
 }
 
 export function ensureUniversalAgents(targetAgents: AgentType[]): AgentType[] {
@@ -326,10 +357,16 @@ export async function runSkillsbayAdd(skillId: string, options: SkillsbayAddOpti
   const walletMode = options.wallet || (hasWalletKey ? 'env' : 'auto');
 
   if (walletMode === 'env' && hasWalletKey) {
-    spinner.start('Purchasing via agent wallet (x402 EVM exact scheme)…');
+    spinner.start('Checking author access…');
     try {
-      markdown = await completeWalletPayment(skillId);
-      spinner.stop('Payment settled and confirmed');
+      markdown = (await getAuthorBundleFromWallet(skillId)) ?? '';
+      if (markdown) {
+        spinner.stop('Author access confirmed — no payment needed');
+      } else {
+        spinner.start('Purchasing via agent wallet (x402 EVM exact scheme)…');
+        markdown = await completeWalletPayment(skillId);
+        spinner.stop('Payment settled and confirmed');
+      }
     } catch (err: unknown) {
       spinner.stop('Wallet payment failed');
       throw err;

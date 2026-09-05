@@ -1,4 +1,4 @@
-import type { ReactNode } from "react"
+import { useMemo, type ReactNode } from "react"
 import { PrivyProvider, usePrivy, useSendTransaction, useSignMessage } from "@privy-io/react-auth"
 import { AuthorAuthContext, type AuthorIdentity } from "./author-auth-context"
 import { UsernameClaimDialog } from "@/components/organisms/username-claim-dialog"
@@ -13,7 +13,17 @@ function PrivyAuthorIdentityProvider({ children }: { children: ReactNode }) {
   const { signMessage } = useSignMessage()
   const embeddedWallet = user?.linkedAccounts.find((account) => account.type === "wallet" && account.chainType === "ethereum" && account.walletClientType === "privy" && account.walletIndex === 0)
   const walletAddress = embeddedWallet && "address" in embeddedWallet ? embeddedWallet.address : undefined
-  const value: AuthorIdentity = { configured: true, ready, authenticated, displayName: user?.email?.address ?? "Author", walletAddress, login, logout, signMessage: async (message) => (await signMessage({ message })).signature, sendTransaction: async (request) => sendTransaction(request) }
+  const value: AuthorIdentity = useMemo(() => ({
+    configured: true,
+    ready,
+    authenticated,
+    displayName: user?.email?.address ?? "Author",
+    walletAddress,
+    login,
+    logout,
+    signMessage: async (message) => (await signMessage({ message })).signature,
+    sendTransaction: async (request) => sendTransaction(request),
+  }), [ready, authenticated, user?.email?.address, walletAddress, login, logout, signMessage, sendTransaction])
   return <AuthorAuthContext.Provider value={value}><UsernameClaimDialog />{children}</AuthorAuthContext.Provider>
 }
 

@@ -69,13 +69,13 @@ function BrowserCheckout({ skill }: { skill: Skill }) {
 
   async function pay() {
     if (!author.authenticated) return author.login()
-    if (!author.walletAddress || !author.sendTransaction || !registryAddress) return toast.error("Your Privy wallet is still being prepared.")
+    if (!author.walletAddress || !author.sendTransaction || !author.signMessage || !registryAddress) return toast.error("Your Privy wallet is still being prepared.")
     setPaying(true)
     try {
       const alreadyPurchased = purchaseAccess.data ?? await getPurchaseAccess(skill.id, author.walletAddress)
       if (alreadyPurchased) {
         if (installRequestId && installRequestId !== "1") {
-          await completeInstallRequest(installRequestId, author.walletAddress)
+          await completeInstallRequest({ id: installRequestId, skillId: skill.id, buyer: author.walletAddress, signMessage: author.signMessage })
           toast.success("Installation unlocked", { description: "Return to the CLI; it will finish automatically." })
           setCheckoutOpen(false)
         } else {
@@ -103,5 +103,5 @@ function BrowserCheckout({ skill }: { skill: Skill }) {
   const description = owned
     ? installRequestId && installRequestId !== "1" ? "This Privy wallet already owns this skill. Continue to authorize the waiting CLI installation—no payment is needed." : "This Privy wallet already owns this skill. No additional payment is needed."
     : `Pay $${skill.priceUsdc} USDC from your Privy wallet on Base Sepolia. The payment is sent to SkillsBay and your access entitlement is recorded automatically.`
-  return <Dialog open={open} onOpenChange={setCheckoutOpen}><DialogTrigger asChild><Button className="w-full">Pay with wallet</Button></DialogTrigger><DialogContent><DialogHeader><DialogTitle>{owned ? `Install ${skill.title}` : `Purchase ${skill.title}`}</DialogTitle><DialogDescription>{description}</DialogDescription></DialogHeader><div className="grid gap-4 pt-2">{pendingTransactionHash ? <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-950">Your USDC transfer was submitted. Retrying below only records the purchase—it will not send another payment.</p> : null}<Button disabled={paying || purchaseAccess.isLoading || (author.authenticated && (!author.walletAddress || !author.sendTransaction || !registryAddress)) || (owned && (!installRequestId || installRequestId === "1"))} onClick={pay}>{label}</Button><p className="text-xs leading-5 text-muted-foreground">For an autonomous local installation, use the CLI with a funded agent wallet. This browser flow records purchase access for the connected Privy wallet.</p></div></DialogContent></Dialog>
+  return <Dialog open={open} onOpenChange={setCheckoutOpen}><DialogTrigger asChild><Button className="w-full">Pay with wallet</Button></DialogTrigger><DialogContent><DialogHeader><DialogTitle>{owned ? `Install ${skill.title}` : `Purchase ${skill.title}`}</DialogTitle><DialogDescription>{description}</DialogDescription></DialogHeader><div className="grid gap-4 pt-2">{pendingTransactionHash ? <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-950">Your USDC transfer was submitted. Retrying below only records the purchase—it will not send another payment.</p> : null}<Button disabled={paying || purchaseAccess.isLoading || (author.authenticated && (!author.walletAddress || !author.sendTransaction || !author.signMessage || !registryAddress)) || (owned && (!installRequestId || installRequestId === "1"))} onClick={pay}>{label}</Button><p className="text-xs leading-5 text-muted-foreground">For an autonomous local installation, use the CLI with a funded agent wallet. This browser flow records purchase access for the connected Privy wallet.</p></div></DialogContent></Dialog>
 }

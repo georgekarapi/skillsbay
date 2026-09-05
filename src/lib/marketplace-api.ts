@@ -2,6 +2,7 @@ import type { Skill } from "@/types/marketplace"
 import type { PublishAuthorization } from "../../shared/publish-authorization"
 import type { BundleReadAuthorization } from "../../shared/publish-authorization"
 import type { UsernameAuthorization } from "../../shared/publish-authorization"
+import { createInstallRequestAuthorizationMessage } from "../../shared/publish-authorization"
 
 export type AuthorDashboardData = {
   totalSales: number
@@ -50,8 +51,10 @@ export async function getPurchaseAccess(skillId: string, buyer: string) {
   return payload.data.purchased
 }
 
-export async function completeInstallRequest(id: string, buyer: string) {
-  const response = await fetch(endpoint(`/v1/install-requests/${encodeURIComponent(id)}/complete`), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ buyer }) })
+export async function completeInstallRequest(input: { id: string; skillId: string; buyer: string; signMessage: (message: string) => Promise<string> }) {
+  const issuedAt = new Date().toISOString()
+  const signature = await input.signMessage(createInstallRequestAuthorizationMessage({ installRequestId: input.id, skillId: input.skillId, buyer: input.buyer, issuedAt }))
+  const response = await fetch(endpoint(`/v1/install-requests/${encodeURIComponent(input.id)}/complete`), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ buyer: input.buyer, issuedAt, signature }) })
   const payload = await response.json().catch(() => ({})) as { error?: string }
   if (!response.ok) throw new Error(payload.error ?? "Could not unlock this installation")
 }
