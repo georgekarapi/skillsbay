@@ -26,7 +26,7 @@ const sampleStorySkill = {
 
 const meta = { title: "Organisms/Marketplace", component: SkillLeaderboard, decorators: [(Story) => <MemoryRouter><div className="min-h-screen bg-background p-6"><Story /></div></MemoryRouter>] } satisfies Meta<typeof SkillLeaderboard>
 export default meta
-type Story = StoryObj<typeof meta>
+type Story = StoryObj<typeof SkillLeaderboard>
 
 export const Leaderboard: Story = {}
 export const Hero: Story = { render: () => <HeroSection /> }

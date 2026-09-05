@@ -4,22 +4,33 @@ import { Search } from "lucide-react"
 import { getMarketplaceSkills } from "@/lib/marketplace-api"
 import { Input } from "@/components/ui/input"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-import { StatusDot } from "@/components/atoms/status-dot"
 import { SkillRow } from "@/components/organisms/skill-row"
 
-type SkillTab = "trending" | "top" | "new"
+export type SkillTab = "trending" | "top" | "new"
 
-export function SkillLeaderboard() {
+export interface SkillLeaderboardProps {
+  tab?: SkillTab
+  onTabChange?: (tab: SkillTab) => void
+}
+
+export function SkillLeaderboard({ tab: controlledTab, onTabChange }: SkillLeaderboardProps = {}) {
   const [query, setQuery] = useState("")
-  const [tab, setTab] = useState<SkillTab>("trending")
+  const [internalTab, setInternalTab] = useState<SkillTab>("trending")
+  const tab = controlledTab ?? internalTab
+  const handleTabChange = (newTab: SkillTab) => {
+    if (onTabChange) {
+      onTabChange(newTab)
+    } else {
+      setInternalTab(newTab)
+    }
+  }
   const [indicator, setIndicator] = useState<{ width: number; x: number } | null>(null)
   const toggleGroupRef = useRef<HTMLDivElement>(null)
   const marketplace = useQuery({ queryKey: ["marketplace-skills"], queryFn: getMarketplaceSkills })
-  const allSkills = marketplace.data?.skills ?? []
-  const hasLiveGraphData = marketplace.data?.source === "graph" && allSkills.length > 0
-  const isDbData = marketplace.data?.source === "db"
+  const skillsData = marketplace.data?.skills
   const filtered = useMemo(() => {
-    const matchingSkills = allSkills.filter((skill) =>
+    const list = skillsData ?? []
+    const matchingSkills = list.filter((skill) =>
       `${skill.title} ${skill.namespace} ${skill.category}`.toLowerCase().includes(query.toLowerCase()),
     )
 
@@ -28,7 +39,7 @@ export function SkillLeaderboard() {
       if (tab === "new") return left.rank - right.rank
       return right.trend - left.trend
     })
-  }, [allSkills, query, tab])
+  }, [skillsData, query, tab])
 
   useLayoutEffect(() => {
     const updateIndicator = () => {
@@ -51,7 +62,7 @@ export function SkillLeaderboard() {
               type="single"
               value={tab}
               onValueChange={(value) => {
-                if (value === "trending" || value === "top" || value === "new") setTab(value)
+                if (value === "trending" || value === "top" || value === "new") handleTabChange(value)
               }}
             >
               {indicator && (
@@ -84,11 +95,6 @@ export function SkillLeaderboard() {
               </ToggleGroupItem>
             </ToggleGroup>
           </div>
-
-          <span className="hidden items-center gap-1.5 text-xs text-muted-foreground md:inline-flex">
-            <StatusDot className={hasLiveGraphData ? undefined : isDbData ? "bg-emerald-500" : "bg-amber-500"} />
-            {hasLiveGraphData ? "Live Graph index" : isDbData ? "Local database" : "Graph index pending"}
-          </span>
         </div>
         <div className="relative sm:w-64"><Search className="pointer-events-none absolute left-2.5 top-2.5 size-4 text-muted-foreground" /><Input value={query} onChange={(event) => setQuery(event.target.value)} className="h-9 pl-8 text-sm" placeholder="Search skills" /></div>
       </div>

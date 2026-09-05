@@ -9,7 +9,7 @@ import { getMarketplaceSkills } from "@/lib/marketplace-api"
 const FALLBACK_SKILLS = [
   { slug: "thegraph/substreams-deployer", label: "substreams-deployer", price: "0.25 USDC" },
   { slug: "defi/audited-automation", label: "audited-automation", price: "0.80 USDC" },
-  { slug: "solidity/incident-response", label: "incident-response", price: "1.20 USDC" },
+  { slug: "openai/evals-rig", label: "evals-rig", price: "0.35 USDC" },
 ]
 
 export function HeroSection() {
@@ -21,11 +21,14 @@ export function HeroSection() {
   const skillsData = marketplace.data?.skills
   const skills = useMemo(() => {
     if (skillsData && skillsData.length > 0) {
-      return skillsData.slice(0, 5).map((item) => ({
-        slug: item.id,
-        label: item.slug,
-        price: `${item.priceUsdc} USDC`,
-      }))
+      return [...skillsData]
+        .sort((a, b) => b.paidInstalls - a.paidInstalls)
+        .slice(0, 3)
+        .map((item) => ({
+          slug: item.id,
+          label: item.slug,
+          price: `${item.priceUsdc} USDC`,
+        }))
     }
     return FALLBACK_SKILLS
   }, [skillsData])

@@ -22,10 +22,10 @@ export function AuthorOverview() {
   const walletLabel = author.walletAddress ? `${author.walletAddress.slice(0, 6)}…${author.walletAddress.slice(-4)}` : "0x8dF2…7A31"
 
   return <div className="grid gap-6">
-    <div className="flex items-center gap-1.5 text-xs text-muted-foreground"><StatusDot className={isLiveGraphData ? undefined : isDbData ? "bg-emerald-500" : "bg-amber-500"} /> {isLiveGraphData ? "Live Graph index" : isDbData ? "Local database" : "Graph index pending — connect the deployed Graph endpoint for account activity."}</div>
+    {(isLiveGraphData || isDbData) && <div className="flex items-center gap-1.5 text-xs text-muted-foreground"><StatusDot className={isLiveGraphData ? undefined : "bg-emerald-500"} /> {isLiveGraphData ? "Live Graph index" : "Local database"}</div>}
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      <MetricCard label="Published skills" value={publishedSkills.length.toString()} detail={isLiveGraphData ? "Registered on Base Sepolia" : isDbData ? "Local database skills" : "Awaiting Graph index"} icon={<BarChart3 className="size-4" />} />
-      <MetricCard label="Paid installs" value={totalSales.toLocaleString()} detail={isLiveGraphData ? "Indexed purchase receipts" : isDbData ? "Local database purchases" : "Awaiting indexed receipts"} icon={<Download className="size-4" />} />
+      <MetricCard label="Published skills" value={publishedSkills.length.toString()} detail={isLiveGraphData ? "Registered on Base Sepolia" : isDbData ? "Local database skills" : "Published skills"} icon={<BarChart3 className="size-4" />} />
+      <MetricCard label="Paid installs" value={totalSales.toLocaleString()} detail={isLiveGraphData ? "Indexed purchase receipts" : isDbData ? "Local database purchases" : "Recent purchases"} icon={<Download className="size-4" />} />
       <MetricCard label="Creator payouts" value={`$${grossRevenue}`} detail="USDC sent directly to your wallet" icon={<CircleDollarSign className="size-4" />} />
       <MetricCard label="Settlement" value="95%" detail={`Sent instantly to ${walletLabel}`} icon={<Wallet className="size-4" />} />
     </div>
