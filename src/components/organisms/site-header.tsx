@@ -35,6 +35,16 @@ export function SiteHeader() {
               Discover
             </Link>
             <Link
+              to="/docs"
+              className={`rounded-md px-3 py-1.5 transition-colors ${
+                location.pathname.startsWith("/docs")
+                  ? "font-semibold text-foreground"
+                  : "hover:bg-muted hover:text-foreground"
+              }`}
+            >
+              Docs
+            </Link>
+            <Link
               to="/dashboard"
               className={`rounded-md px-3 py-1.5 transition-colors ${
                 location.pathname.startsWith("/dashboard")
@@ -75,6 +85,17 @@ export function SiteHeader() {
                   }`}
                 >
                   Discover
+                </Link>
+                <Link
+                  to="/docs"
+                  onClick={() => setOpen(false)}
+                  className={`rounded-lg px-3 py-2 transition-colors ${
+                    location.pathname.startsWith("/docs")
+                      ? "bg-muted font-semibold text-foreground"
+                      : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                  }`}
+                >
+                  Docs
                 </Link>
                 <Link
                   to="/dashboard"

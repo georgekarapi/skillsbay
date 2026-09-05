@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { getMarketplaceSkills } from "@/lib/marketplace-api"
+import { CommandText } from "@/components/molecules/command-text"
 
 const FALLBACK_SKILLS = [
   { slug: "thegraph/substreams-deployer", label: "substreams-deployer", price: "0.25 USDC" },
@@ -21,8 +22,39 @@ function HeroTerminalCard({
   const [isPaused, setIsPaused] = useState(false)
   const [copied, setCopied] = useState(false)
 
+  // Separate "displayed" skill that only swaps after the exit animation
+  const [displayedSkill, setDisplayedSkill] = useState(
+    () => skills[0] ?? FALLBACK_SKILLS[0]
+  )
+  const [phase, setPhase] = useState<"idle" | "exit" | "enter">("idle")
+
   const activeSkill = skills[selectedIndex % skills.length] ?? skills[0] ?? FALLBACK_SKILLS[0]
-  const command = `npx skillsbay add ${activeSkill.slug}`
+  const command = `npx skillsbay add ${displayedSkill.slug}`
+
+  // When selectedIndex changes, run exit → swap → enter
+  useEffect(() => {
+    if (activeSkill.slug === displayedSkill.slug) return
+
+    setPhase("exit")
+    const exitTimer = window.setTimeout(() => {
+      setDisplayedSkill(activeSkill)
+      setPhase("enter")
+      const enterTimer = window.setTimeout(() => setPhase("idle"), 700)
+      return () => window.clearTimeout(enterTimer)
+    }, 300)
+
+    return () => window.clearTimeout(exitTimer)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSkill.slug])
+
+  // Sync initial displayed skill when skills load
+  useEffect(() => {
+    if (skills.length > 0 && phase === "idle") {
+      setDisplayedSkill(skills[0] ?? FALLBACK_SKILLS[0])
+    }
+  // only on first skills load
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [skills.length])
 
   // Cycle package selection every 3.5s unless hovered or just copied
   useEffect(() => {
@@ -43,6 +75,13 @@ function HeroTerminalCard({
       toast.error("Could not copy the command")
     }
   }
+
+  const commandPhaseClass =
+    phase === "exit"
+      ? "terminal-cmd-exit"
+      : phase === "enter"
+        ? "terminal-cmd-enter"
+        : ""
 
   return (
     <div
@@ -121,15 +160,12 @@ function HeroTerminalCard({
           className="cursor-pointer rounded-lg border border-border/70 bg-muted/40 p-3.5 font-mono text-xs transition-colors hover:border-primary/40 hover:bg-muted/60"
         >
           <div className="flex items-center justify-between gap-2 overflow-x-auto py-0.5">
-            <div className="flex items-center gap-2">
+            <div className={`flex items-center gap-2 ${commandPhaseClass}`}>
               <span className="select-none text-muted-foreground/60 font-mono">$</span>
-              <span className="text-foreground font-mono">npx skillsbay add</span>
+              <span className="text-foreground font-mono"><CommandText text="npx skillsbay add" /></span>
               <div className="inline-flex items-center">
-                <span
-                  key={activeSkill.slug}
-                  className="animate-terminal-cycle inline-block font-semibold text-primary font-mono"
-                >
-                  {activeSkill.slug}
+                <span className="inline-block font-semibold text-primary font-mono">
+                  {displayedSkill.slug}
                 </span>
                 <span
                   aria-hidden="true"
@@ -147,16 +183,16 @@ function HeroTerminalCard({
             Receipt verified onchain
           </span>
           <span
-            key={activeSkill.price}
-            className="animate-terminal-cycle inline-block rounded bg-muted/50 px-1.5 py-0.5 text-foreground/80 font-medium"
+            className={`inline-block rounded bg-muted/50 px-1.5 py-0.5 text-foreground/80 font-medium ${commandPhaseClass}`}
           >
-            {activeSkill.price}
+            {displayedSkill.price}
           </span>
         </div>
       </div>
     </div>
   )
 }
+
 
 export const HeroSection = memo(function HeroSection() {
   const marketplace = useQuery({ queryKey: ["marketplace-skills"], queryFn: getMarketplaceSkills })
@@ -247,4 +283,3 @@ export const HeroSection = memo(function HeroSection() {
     </section>
   )
 })
-

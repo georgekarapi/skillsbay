@@ -11,6 +11,10 @@ export function MarketplaceShell({ children }: { children: ReactNode }) {
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 text-xs text-muted-foreground sm:flex-row sm:px-6">
           <div className="flex items-center gap-3">
             <span>skillsbay · paid skills for agents</span>
+            <span className="hidden h-3 w-px bg-border sm:inline-block" aria-hidden="true" />
+            <a href="/docs" className="hover:text-foreground transition-colors underline-offset-4 hover:underline">
+              Docs & Guides
+            </a>
           </div>
           <div className="flex items-center gap-4">
             <span>Base Sepolia · The Graph · Privy</span>

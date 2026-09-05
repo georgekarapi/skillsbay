@@ -2,13 +2,13 @@
 
 SkillsBay is a Web3-native package manager and marketplace for paid AI-agent skills. Publishers list private `SKILL.md` bundles, agents pay once in USDC through x402, and the CLI installs the purchased skill into `.agents/skills` or `.claude/skills`.
 
-The project is designed for a Base + The Graph + Privy + Circle Paymaster stack:
+SkillsBay uses the following partner services:
 
 - **Base** provides skill registration, purchase receipts, and immediate royalty settlement.
 - **The Graph** indexes skills, purchases, author earnings, and installation analytics.
 - **Privy** gives authors passwordless onboarding and embedded-wallet publishing.
 - **x402** gives agents a standard HTTP 402 payment flow.
-- **Circle Paymaster** lets the backend recorder pay Base gas in USDC instead of maintaining an ETH balance.
+- **Circle Paymaster** supports reliable USDC-denominated settlement operations.
 
 ## System architecture
 
@@ -16,18 +16,18 @@ The project is designed for a Base + The Graph + Privy + Circle Paymaster stack:
 flowchart LR
   Author[Author] -->|Privy embedded wallet| Web[SkillsBay web app]
   Web -->|register / update skill| Registry[SkillRegistry on Base]
-  Web -->|signed private bundle upload| Worker[Cloudflare Worker]
-  Worker --> Storage[(D1 + private R2 bundles)]
+  Web -->|signed private bundle upload| Access[SkillsBay access service]
+  Access --> Storage[Private bundle storage]
 
-  Agent[Agent or CLI] -->|GET paid bundle| Worker
-  Worker -->|HTTP 402 challenge| Agent
+  Agent[Agent or CLI] -->|request paid bundle| Access
+  Access -->|HTTP 402 challenge| Agent
   Agent -->|USDC x402 settlement| Registry
-  Worker -->|ERC-4337 recordPurchase| Registry
-  Paymaster[Circle Paymaster] -->|USDC gas payment| Worker
+  Access -->|record purchase| Registry
+  Paymaster[Circle Paymaster] -->|settlement support| Access
 
   Registry -->|events| Graph[The Graph subgraph]
-  Graph -->|marketplace + analytics| Worker
-  Worker -->|decrypted SKILL.md after receipt| Agent
+  Graph -->|marketplace + analytics| Access
+  Access -->|private SKILL.md after entitlement| Agent
 ```
 
 ## Purchase lifecycle
@@ -35,23 +35,23 @@ flowchart LR
 ```mermaid
 sequenceDiagram
   participant C as skillsbay CLI
-  participant W as Cloudflare Worker
+  participant A as SkillsBay access service
   participant F as x402 facilitator
   participant R as SkillRegistry
   participant P as Circle Paymaster
   participant G as The Graph
 
-  C->>W: GET paid bundle
-  W-->>C: 402 payment requirements (USDC)
+  C->>A: Request paid bundle
+  A-->>C: 402 payment requirements (USDC)
   C->>F: Sign and settle x402 payment
   F->>R: Transfer USDC to registry
-  F-->>W: Settled payment receipt
-  W->>P: Submit sponsored ERC-4337 UserOperation
-  P->>R: recordPurchase(skill, buyer, receipt)
+  F-->>A: Settled payment receipt
+  A->>P: Request settlement support
+  P->>R: Record purchase
   R->>R: Mark entitlement and prevent replay
   R->>R: Send 95% to author / 5% to treasury
   R-->>G: SkillPurchased event
-  W-->>C: Decrypted SKILL.md
+  A-->>C: Private SKILL.md after entitlement
 ```
 
 ## Repository structure
@@ -62,10 +62,10 @@ sequenceDiagram
 │   ├── components/               # Atomic UI components and shadcn primitives
 │   ├── pages/                    # Marketplace, skill, publish, and dashboard routes
 │   └── lib/                      # Browser API and chain helpers
-├── worker/                       # Cloudflare Worker API and x402 gate
-│   ├── index.ts                  # API routes, settlement, Circle Paymaster recorder
-│   └── storage.ts                # Encrypted R2 bundle storage
-├── db/migrations/                # Cloudflare D1 schema migrations
+├── worker/                       # Access API and x402 entitlement gate
+│   ├── index.ts                  # API routes and settlement orchestration
+│   └── storage.ts                # Private bundle storage
+├── db/migrations/                # Application data schema migrations
 ├── shared/                       # Signed publishing and username authorization formats
 ├── packages/
 │   ├── cli/                      # `npx skillsbay add <namespace>/<skill>`
@@ -177,30 +177,9 @@ pnpm deploy:registry -- --mainnet
 
 The recorder address configured at deployment must be the public address derived from the same secret configured in the Worker as `RECORDER_PRIVATE_KEY`.
 
-## Circle Paymaster recorder
+## Circle Paymaster
 
-The Worker turns the recorder key into an EIP-7702 smart account and submits `recordPurchase` through an ERC-4337 bundler. Circle Paymaster charges the account’s USDC balance for gas.
-
-```mermaid
-flowchart LR
-  Key[RECORDER_PRIVATE_KEY<br/>Worker secret] --> SmartAccount[EIP-7702 recorder account]
-  SmartAccount -->|ERC-4337 UserOperation| Bundler[Bundler]
-  Bundler -->|paymaster data + permit| Paymaster[Circle Paymaster]
-  Paymaster -->|USDC gas charge| SmartAccount
-  SmartAccount -->|recordPurchase| Registry[SkillRegistry]
-```
-
-For Base Sepolia, configure the Worker with:
-
-```text
-BASE_SEPOLIA_RPC_URL=<rpc-url>
-RECORDER_PRIVATE_KEY=<dedicated-recorder-key>
-BUNDLER_RPC_URL=<production-bundler-url>
-SKILL_REGISTRY_ADDRESS=<deployed-registry>
-X402_RECIPIENT_ADDRESS=<same-deployed-registry>
-```
-
-`BUNDLER_RPC_URL` has a public development fallback. Use a production bundler endpoint for a reliable hosted deployment. The recorder needs a small USDC operating balance, not ETH.
+Circle Paymaster supports reliable USDC-denominated gas for settlement operations. Its implementation credentials and operational configuration remain private to the deployment environment.
 
 ## Post-deployment configuration
 
@@ -221,15 +200,15 @@ Then deploy the subgraph and set `GRAPH_API_URL` in the Worker. The Worker uses 
 pnpm --filter @skillsbay/subgraph run deploy
 ```
 
-### Worker deployment
+### Application deployment
 
-Deploy the marketplace UI and API with the explicit Worker script:
+Deploy the marketplace UI and access service with the deployment script:
 
 ```bash
 pnpm run deploy:worker
 ```
 
-`SKILL_REGISTRY_ADDRESS` and `X402_RECIPIENT_ADDRESS` are public Worker variables and must both equal the deployed registry. Keep only the bundle encryption key and recorder private key in the Worker secret store.
+Keep deployment credentials and service secrets out of source control. Public application settings should be limited to values that are safe to expose in the browser or client configuration.
 
 ## Local development
 
@@ -258,10 +237,10 @@ pnpm --filter @skillsbay/subgraph build
 
 ## Security notes
 
-- Never commit private keys, RPC credentials, deployment outputs containing sensitive data, or Cloudflare secrets.
-- Keep `RECORDER_PRIVATE_KEY` only in the Worker secret store. Its associated address is limited by the registry to purchase recording.
+- Never commit private keys, RPC credentials, deployment outputs containing sensitive data, or service secrets.
+- Keep payment-operation credentials in the deployment secret store and limit their on-chain authority to purchase recording.
 - Keep the registry owner in a multisig Safe for production deployments.
-- Use a unique encryption key for bundle storage and rotate service keys if compromise is suspected.
+- Keep bundles in private storage and rotate service credentials if compromise is suspected.
 - Verify the deployed registry owner, recorder, treasury, USDC token, and fee before enabling payments.
 
 ## Hackathon tracks
