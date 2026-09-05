@@ -1,0 +1,33 @@
+specVersion: 1.3.0
+indexerHints:
+  prune: auto
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum
+    name: SkillRegistry
+    network: base-sepolia
+    source:
+      address: "0x5b8A22f1dc11f38333469BEBd6d6Fe2852eA3f1D"
+      abi: SkillRegistry
+      startBlock: 46422675
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - Skill
+        - Author
+        - Purchase
+        - DailySkillStat
+      abis:
+        - name: SkillRegistry
+          file: ./abis/SkillRegistry.json
+      eventHandlers:
+        - event: SkillRegistered(indexed bytes32,indexed address,uint96,uint32,string)
+          handler: handleSkillRegistered
+        - event: SkillUpdated(indexed bytes32,uint96,bool,string)
+          handler: handleSkillUpdated
+        - event: SkillPurchased(indexed address,indexed bytes32,uint256,uint256,indexed bytes32)
+          handler: handleSkillPurchased
+      file: ./src/mapping.ts

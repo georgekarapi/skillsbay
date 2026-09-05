@@ -1,0 +1,38 @@
+type Skill @entity(immutable: false) {
+  id: Bytes!
+  author: Author!
+  price: BigInt!
+  majorVersion: Int!
+  metadataURI: String!
+  active: Boolean!
+  totalSales: Int!
+  grossVolume: BigInt!
+  createdAt: BigInt!
+  updatedAt: BigInt!
+}
+
+type Author @entity(immutable: false) {
+  id: Bytes!
+  skills: [Skill!]! @derivedFrom(field: "author")
+  totalSales: Int!
+  grossRevenue: BigInt!
+}
+
+type Purchase @entity(immutable: true) {
+  id: Bytes!
+  skill: Skill!
+  buyer: Bytes!
+  amount: BigInt!
+  paymentTxHash: Bytes!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type DailySkillStat @entity(immutable: false) {
+  id: ID!
+  skill: Skill!
+  day: Int!
+  purchases: Int!
+  volume: BigInt!
+}
