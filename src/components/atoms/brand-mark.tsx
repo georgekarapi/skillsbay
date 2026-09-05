@@ -1,10 +1,18 @@
-export function BrandMark() {
+import type { ImgHTMLAttributes } from "react"
+
+export interface BrandMarkProps extends ImgHTMLAttributes<HTMLImageElement> {}
+
+export function BrandMark({
+  className = "size-7",
+  alt = "SkillsBay Mark",
+  ...props
+}: BrandMarkProps) {
   return (
     <img
-      src="/skillsbay-mark.png"
-      alt=""
-      aria-hidden="true"
-      className="size-7 rounded-md"
+      src="/favicon.svg"
+      alt={alt}
+      className={className}
+      {...props}
     />
   )
 }
