@@ -16,8 +16,10 @@ export function SkillLeaderboard() {
   const [indicator, setIndicator] = useState<{ width: number; x: number } | null>(null)
   const toggleGroupRef = useRef<HTMLDivElement>(null)
   const marketplace = useQuery({ queryKey: ["marketplace-skills"], queryFn: getMarketplaceSkills })
-  const allSkills = marketplace.data?.skills ?? (import.meta.env.DEV ? skills : [])
-  const hasLiveGraphData = marketplace.data?.source === "graph"
+  const allSkills = (marketplace.data?.skills && marketplace.data.skills.length > 0)
+    ? marketplace.data.skills
+    : (import.meta.env.DEV ? skills : [])
+  const hasLiveGraphData = marketplace.data?.source === "graph" && (marketplace.data?.skills?.length ?? 0) > 0
   const isDemoData = marketplace.data?.source === "demo"
   const filtered = useMemo(() => {
     const matchingSkills = allSkills.filter((skill) =>
@@ -32,8 +34,13 @@ export function SkillLeaderboard() {
   }, [allSkills, query, tab])
 
   useLayoutEffect(() => {
-    const activeItem = toggleGroupRef.current?.querySelector<HTMLElement>(`[data-skill-tab="${tab}"]`)
-    if (activeItem) setIndicator({ width: activeItem.offsetWidth, x: activeItem.offsetLeft })
+    const updateIndicator = () => {
+      const activeItem = toggleGroupRef.current?.querySelector<HTMLElement>(`[data-skill-tab="${tab}"]`)
+      if (activeItem) setIndicator({ width: activeItem.offsetWidth, x: activeItem.offsetLeft })
+    }
+    updateIndicator()
+    window.addEventListener("resize", updateIndicator)
+    return () => window.removeEventListener("resize", updateIndicator)
   }, [tab])
 
   return (
@@ -50,12 +57,37 @@ export function SkillLeaderboard() {
                 if (value === "trending" || value === "top" || value === "new") setTab(value)
               }}
             >
-              {indicator && <span aria-hidden="true" className="pointer-events-none absolute inset-y-1 z-0 rounded-md bg-background shadow-sm transition-[transform,width] duration-200 ease-out" style={{ width: indicator.width, transform: `translateX(${indicator.x}px)` }} />}
-              <ToggleGroupItem className="relative z-10 px-2 text-xs data-[state=on]:bg-transparent data-[state=on]:shadow-none" data-skill-tab="trending" value="trending">Trending</ToggleGroupItem>
-              <ToggleGroupItem className="relative z-10 px-2 text-xs data-[state=on]:bg-transparent data-[state=on]:shadow-none" data-skill-tab="top" value="top">Top</ToggleGroupItem>
-              <ToggleGroupItem className="relative z-10 px-2 text-xs data-[state=on]:bg-transparent data-[state=on]:shadow-none" data-skill-tab="new" value="new">New</ToggleGroupItem>
+              {indicator && (
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-y-1 left-0 z-0 rounded-md bg-background shadow-sm transition-[transform,width] duration-200 ease-out"
+                  style={{ width: indicator.width, transform: `translateX(${indicator.x}px)` }}
+                />
+              )}
+              <ToggleGroupItem
+                className="relative z-10 h-7 px-3 text-xs font-medium data-[state=on]:bg-transparent data-[state=on]:shadow-none"
+                data-skill-tab="trending"
+                value="trending"
+              >
+                Trending
+              </ToggleGroupItem>
+              <ToggleGroupItem
+                className="relative z-10 h-7 px-3 text-xs font-medium data-[state=on]:bg-transparent data-[state=on]:shadow-none"
+                data-skill-tab="top"
+                value="top"
+              >
+                Top
+              </ToggleGroupItem>
+              <ToggleGroupItem
+                className="relative z-10 h-7 px-3 text-xs font-medium data-[state=on]:bg-transparent data-[state=on]:shadow-none"
+                data-skill-tab="new"
+                value="new"
+              >
+                New
+              </ToggleGroupItem>
             </ToggleGroup>
           </div>
+
           <span className="hidden items-center gap-1.5 text-xs text-muted-foreground md:inline-flex"><StatusDot className={hasLiveGraphData ? undefined : "bg-amber-500"} /> {hasLiveGraphData ? "Live Graph index" : isDemoData ? "Local demo data" : "Graph index pending"}</span>
         </div>
         <div className="relative sm:w-64"><Search className="pointer-events-none absolute left-2.5 top-2.5 size-4 text-muted-foreground" /><Input value={query} onChange={(event) => setQuery(event.target.value)} className="h-9 pl-8 text-sm" placeholder="Search skills" /></div>

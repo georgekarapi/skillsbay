@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { MemoryRouter } from "react-router-dom"
+import { HeroSection } from "@/components/organisms/hero-section"
 import { AuthorOverview } from "@/components/organisms/author-overview"
 import { SiteHeader } from "@/components/organisms/site-header"
 import { SkillLeaderboard } from "@/components/organisms/skill-leaderboard"
@@ -11,6 +12,8 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const Leaderboard: Story = {}
+export const Hero: Story = { render: () => <HeroSection /> }
 export const SkillListRow: Story = { render: () => <SkillRow skill={skills[0]} /> }
 export const Header: Story = { render: () => <SiteHeader /> }
 export const AuthorDashboard: Story = { render: () => <AuthorOverview /> }
+
