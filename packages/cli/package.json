@@ -4,23 +4,35 @@
   "description": "Pay-per-skill package manager for AI agents",
   "type": "module",
   "bin": {
-    "skillsbay": "dist/index.js"
+    "skillsbay": "./bin/cli.mjs"
   },
   "files": [
-    "dist"
+    "dist",
+    "bin"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "dev": "tsx src/index.ts"
+    "build": "tsup",
+    "dev": "tsx src/cli.ts"
   },
   "dependencies": {
+    "@clack/prompts": "^1.7.0",
+    "@vercel/detect-agent": "^1.2.5",
     "@x402/core": "^2.25.0",
     "@x402/evm": "^2.25.0",
     "@x402/fetch": "^2.25.0",
     "commander": "^15.0.0",
-    "viem": "^2.56.3"
+    "picocolors": "^1.1.1",
+    "simple-git": "^3.36.0",
+    "tar": "^7.5.22",
+    "viem": "^2.56.3",
+    "xdg-basedir": "^5.1.0",
+    "yaml": "^2.9.0"
   },
   "devDependencies": {
-    "tsx": "^4.23.13"
+    "@types/node": "^24.13.3",
+    "@types/tar": "^7.0.87",
+    "tsup": "^8.5.1",
+    "tsx": "^4.23.13",
+    "typescript": "^6.0.2"
   }
 }
