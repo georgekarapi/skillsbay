@@ -1,0 +1,26 @@
+{
+  "name": "skillsbay",
+  "version": "0.2.2",
+  "description": "Pay-per-skill package manager for AI agents",
+  "type": "module",
+  "bin": {
+    "skillsbay": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@x402/core": "^2.25.0",
+    "@x402/evm": "^2.25.0",
+    "@x402/fetch": "^2.25.0",
+    "commander": "^15.0.0",
+    "viem": "^2.56.3"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.13"
+  }
+}
