@@ -11,6 +11,11 @@ on:
         required: false
         default: false
         type: boolean
+      deploy_worker:
+        description: Build, migrate, and deploy the Worker even when no deployable files changed
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -25,6 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       cli: ${{ steps.cli.outputs.changed }}
+      worker: ${{ steps.worker.outputs.changed }}
 
     steps:
       - name: Check out source
@@ -32,8 +38,29 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Detect CLI changes in this push
+      - name: Detect changed release surfaces
         id: cli
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          changed() {
+            if [ "$EVENT_NAME" != "push" ]; then
+              printf false
+            elif ! git cat-file -e "$BEFORE_SHA^{commit}" 2>/dev/null; then
+              printf true
+            elif git diff --quiet "$BEFORE_SHA" "$HEAD_SHA" -- "$@"; then
+              printf false
+            else
+              printf true
+            fi
+          }
+
+          echo "changed=$(changed packages/cli)" >> "$GITHUB_OUTPUT"
+
+      - name: Detect Worker, frontend, and migration changes
+        id: worker
         env:
           EVENT_NAME: ${{ github.event_name }}
           BEFORE_SHA: ${{ github.event.before }}
@@ -43,7 +70,7 @@ jobs:
             echo "changed=false" >> "$GITHUB_OUTPUT"
           elif ! git cat-file -e "$BEFORE_SHA^{commit}" 2>/dev/null; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
-          elif git diff --quiet "$BEFORE_SHA" "$HEAD_SHA" -- packages/cli; then
+          elif git diff --quiet "$BEFORE_SHA" "$HEAD_SHA" -- worker src public db/migrations packages/shared index.html package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json tsconfig.app.json tsconfig.node.json vite.config.ts wrangler.jsonc; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
@@ -51,6 +78,8 @@ jobs:
 
   deploy-worker:
     name: Migrate D1 and deploy Worker
+    needs: detect-changes
+    if: needs.detect-changes.outputs.worker == 'true' || inputs.deploy_worker == true
     runs-on: ubuntu-latest
     environment: production
     permissions:
@@ -99,7 +128,7 @@ jobs:
 
   publish-cli:
     name: Publish CLI to npm
-    needs: [detect-changes, deploy-worker]
+    needs: detect-changes
     if: needs.detect-changes.outputs.cli == 'true' || inputs.publish_cli == true
     runs-on: ubuntu-latest
     environment: npm
