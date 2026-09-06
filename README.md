@@ -208,6 +208,12 @@ Deploy the marketplace UI and access service with the deployment script:
 pnpm run deploy:worker
 ```
 
+### Continuous deployment
+
+Merges to `main` run [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml): it builds the marketplace, applies pending remote D1 migrations, then deploys the Worker. Configure the `production` GitHub environment with `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
+
+When a merge changes `packages/cli`, the same workflow builds and publishes the `skillsbay` npm package. Bump `packages/cli/package.json` first; npm versions are immutable. Configure the `npm` GitHub environment with an `NPM_TOKEN` that can publish the `skillsbay` package.
+
 Keep deployment credentials and service secrets out of source control. Public application settings should be limited to values that are safe to expose in the browser or client configuration.
 
 ## Local development

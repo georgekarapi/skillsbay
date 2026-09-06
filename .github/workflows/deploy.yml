@@ -1,0 +1,99 @@
+name: Deploy SkillsBay
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: skillsbay-production
+  cancel-in-progress: false
+
+jobs:
+  deploy-worker:
+    name: Migrate D1 and deploy Worker
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Worker and marketplace
+        run: pnpm build
+
+      - name: Apply pending D1 migrations
+        run: pnpm wrangler d1 migrations apply skillsbay --remote
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Deploy Worker
+        run: pnpm wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+  publish-cli:
+    name: Publish CLI to npm
+    needs: deploy-worker
+    if: github.event_name == 'push' && contains(join(github.event.commits.*.modified, ' '), 'packages/cli/') || contains(join(github.event.commits.*.added, ' '), 'packages/cli/') || contains(join(github.event.commits.*.removed, ' '), 'packages/cli/')
+    runs-on: ubuntu-latest
+    environment: npm
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build CLI
+        run: pnpm --filter skillsbay build
+
+      - name: Confirm the CLI version is new
+        working-directory: packages/cli
+        run: |
+          PACKAGE_VERSION="$(node -p \"require('./package.json').version\")"
+          if npm view "skillsbay@${PACKAGE_VERSION}" version >/dev/null 2>&1; then
+            echo "skillsbay@${PACKAGE_VERSION} is already published. Bump packages/cli/package.json before merging CLI changes."
+            exit 1
+          fi
+
+      - name: Publish CLI
+        working-directory: packages/cli
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
