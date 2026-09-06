@@ -1,7 +1,15 @@
 import { useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, Lock, LockKeyhole } from "lucide-react";
-import { encodeFunctionData, keccak256, parseAbi, stringToHex } from "viem";
+import {
+  createPublicClient,
+  encodeFunctionData,
+  http,
+  keccak256,
+  parseAbi,
+  stringToHex,
+} from "viem";
+import { baseSepolia } from "viem/chains";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuthorAuth } from "@/components/providers/author-auth-context";
@@ -223,6 +231,16 @@ export function PublishSkillPage() {
       });
       toast.success("Registration submitted", {
         description: `${transaction.hash.slice(0, 10)}…${transaction.hash.slice(-8)}`,
+      });
+      const confirmationClient = createPublicClient({
+        chain: baseSepolia,
+        transport: http(
+          import.meta.env.VITE_BASE_SEPOLIA_RPC_URL || "https://sepolia.base.org",
+        ),
+      });
+      await confirmationClient.waitForTransactionReceipt({
+        hash: transaction.hash,
+        confirmations: 1,
       });
       await uploadAfterConfirmation({
         skillId,

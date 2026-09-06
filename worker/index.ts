@@ -999,4 +999,14 @@ app.get("/:namespace/:slug", async (c) => {
   })
 })
 
+// Client-side routes such as /dashboard/skills/new have more than two path
+// segments and do not match the API or skill SEO handlers above. Let the
+// configured SPA asset fallback serve those routes instead of returning a
+// Worker 404 on a direct navigation or refresh.
+app.all("*", async (c) => {
+  if (!c.env.ASSETS) return c.notFound()
+  const assetRes = await c.env.ASSETS.fetch(c.req.raw)
+  return assetRes.ok ? assetRes : c.notFound()
+})
+
 export default app
