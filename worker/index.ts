@@ -142,6 +142,15 @@ function injectSkillSeoMeta(html: string, skill: OgSkillData, origin: string): s
   return modified
 }
 
+function injectSiteSeoMeta(html: string, origin: string): string {
+  const imageUrl = `${origin}/skillsbay-og.png`
+  return html
+    .replace(/<link rel="canonical" href=".*?" \/>/s, `<link rel="canonical" href="${escapeXml(origin)}" />`)
+    .replace(/<meta property="og:url" content=".*?" \/>/s, `<meta property="og:url" content="${escapeXml(origin)}" />`)
+    .replace(/<meta property="og:image" content=".*?" \/>/s, `<meta property="og:image" content="${escapeXml(imageUrl)}" />`)
+    .replace(/<meta name="twitter:image" content=".*?" \/>/s, `<meta name="twitter:image" content="${escapeXml(imageUrl)}" />`)
+}
+
 async function getOgSkillData(env: Bindings, namespace: string, slug: string): Promise<OgSkillData> {
   const result = await listings(env)
   const skill = result.data.find((item) => item.namespace === namespace && item.slug === slug)
@@ -902,6 +911,19 @@ app.get("/skills/:namespace/:slug", (c) => {
   return c.redirect(`/${c.req.param("namespace")}/${c.req.param("slug")}`, 301)
 })
 
+app.get("/", async (c) => {
+  if (!c.env.ASSETS) return c.notFound()
+  const assetRes = await c.env.ASSETS.fetch(c.req.raw)
+  if (!assetRes.ok) return assetRes
+
+  const baseHtml = await assetRes.text()
+  const html = injectSiteSeoMeta(baseHtml, new URL(c.req.url).origin)
+  return c.html(html, 200, {
+    "content-type": "text/html; charset=utf-8",
+    "cache-control": "public, max-age=0, must-revalidate",
+  })
+})
+
 app.get("/:namespace/:slug", async (c) => {
   const namespace = c.req.param("namespace")
   const slug = c.req.param("slug")
@@ -940,9 +962,7 @@ app.get("/:namespace/:slug", async (c) => {
     })
   }
 
-  const reqOrigin = new URL(c.req.url).origin
-  const origin = reqOrigin.includes("localhost") || reqOrigin.includes("127.0.0.1") ? reqOrigin : "https://skillsbay.dev"
-  const injectedHtml = injectSkillSeoMeta(baseHtml, skillData, origin)
+  const injectedHtml = injectSkillSeoMeta(baseHtml, skillData, new URL(c.req.url).origin)
 
   return c.html(injectedHtml, 200, {
     "content-type": "text/html; charset=utf-8",
