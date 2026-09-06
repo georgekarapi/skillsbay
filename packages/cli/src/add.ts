@@ -522,6 +522,8 @@ setVersion(version);
 
 export interface AddOptions {
   global?: boolean;
+  /** Bypass SkillsBay resolution and install an owner/repository source directly. */
+  fallback?: boolean;
   agent?: string[];
   yes?: boolean;
   skill?: string[];
@@ -2168,6 +2170,8 @@ export function parseAddOptions(args: string[]): {
 
     if (arg === '-g' || arg === '--global') {
       options.global = true;
+    } else if (arg === '--fallback') {
+      options.fallback = true;
     } else if (arg === '-y' || arg === '--yes') {
       options.yes = true;
     } else if (arg === '-l' || arg === '--list') {

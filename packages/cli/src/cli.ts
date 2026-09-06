@@ -100,6 +100,7 @@ ${BOLD}Add Options:${RESET}
   -y, --yes              Skip confirmation and prompts (auto-select agents)
   -f, --force            Replace conflicting local skill
   --wallet <mode>        auto or env (x402-funded agent wallet with SKILLSBAY_PRIVATE_KEY)
+  --fallback             Bypass SkillsBay and install an owner/repository source from GitHub
   --all                  Shorthand for --skill '*' --agent '*' -y
 `);
 }
@@ -174,7 +175,7 @@ async function main(): Promise<void> {
         break;
       }
       const firstSource = addSource[0];
-      const skillsbaySkillId = firstSource ? await resolveSkillsbaySkillId(firstSource) : null;
+      const skillsbaySkillId = !addOpts.fallback && firstSource ? await resolveSkillsbaySkillId(firstSource) : null;
       if (skillsbaySkillId) {
         await runSkillsbayAdd(skillsbaySkillId, {
           global: addOpts.global,

@@ -63,8 +63,12 @@ export async function resolveSkillsbaySkillId(source: string): Promise<string | 
       if (url.hostname === 'skillsbay.dev' || url.hostname.endsWith('.skillsbay.dev')) {
         const parts = url.pathname.split('/').filter(Boolean);
         if (parts.length >= 2) {
-          return `${parts[0]}/${parts[1]}`;
+          raw = `${parts[0]}/${parts[1]}`;
+        } else {
+          return null;
         }
+      } else {
+        return null;
       }
     } catch {
       return null;
@@ -73,14 +77,19 @@ export async function resolveSkillsbaySkillId(source: string): Promise<string | 
 
   const parts = raw.split('/');
   if (parts.length === 2 && parts[0] && parts[1]) {
-    const [namespace, slug] = parts;
+    const skillId = `${parts[0]}/${parts[1]}`;
     try {
-      const info = await fetchSkillInfo(`${namespace}/${slug}`);
-      if (info && info.id) {
-        return `${namespace}/${slug}`;
+      const response = await fetch(endpoint(`/v1/skills/${encodeURIComponent(parts[0])}/${encodeURIComponent(parts[1])}`));
+      if (response.status === 404) {
+        throw new Error(`Skill "${skillId}" was not found on SkillsBay. Use --fallback to install it directly from GitHub instead.`);
       }
-    } catch {
-      return null;
+      if (!response.ok) throw new Error(`${response.status} ${await response.text()}`);
+      const payload = await response.json() as { data?: SkillInfo };
+      return payload.data?.id ? skillId : null;
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith('Skill "')) throw error;
+      const detail = error instanceof Error ? error.message : String(error);
+      throw new Error(`Could not reach SkillsBay to resolve "${skillId}". Set SKILLSBAY_API_URL to a reachable SkillsBay API, or use an explicit Git URL for a repository install. (${detail})`);
     }
   }
 
