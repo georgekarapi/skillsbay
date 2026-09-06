@@ -238,10 +238,13 @@ export function PublishSkillPage() {
           import.meta.env.VITE_BASE_SEPOLIA_RPC_URL || "https://sepolia.base.org",
         ),
       });
-      await confirmationClient.waitForTransactionReceipt({
+      const receipt = await confirmationClient.waitForTransactionReceipt({
         hash: transaction.hash,
         confirmations: 1,
       });
+      if (receipt.status === "reverted") {
+        throw new Error("The registry transaction reverted on Base Sepolia.");
+      }
       await uploadAfterConfirmation({
         skillId,
         markdown,

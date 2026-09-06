@@ -51,4 +51,11 @@
 			"bucket_name": "skillsbay-skill-bundles",
 		},
 	],
+	"kv_namespaces": [
+		{
+			"binding": "CHECKOUT_TOKENS",
+			"id": "2f14b5eae9de4f11a9335d810ad59aee",
+			"preview_id": "768b42b9776741a788a4a7fa1c305ce4"
+		}
+	],
 }

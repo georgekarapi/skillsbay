@@ -1,13 +1,16 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import {
+  AlertCircle,
   ArrowLeft,
   CheckCircle2,
   ChevronRight,
+  Clock,
   Copy,
   ExternalLink,
   Loader2,
   ShieldCheck,
+  Terminal,
   Wallet,
   Zap,
 } from "lucide-react"
@@ -32,6 +35,7 @@ import {
   getMarketplaceSkill,
   getPurchaseAccess,
   recordBrowserPurchase,
+  validateInstallRequest,
 } from "@/lib/marketplace-api"
 import type { Skill } from "@/types/marketplace"
 import { CommandCopy } from "@/components/molecules/command-copy"
@@ -44,7 +48,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
@@ -226,8 +229,12 @@ function SkillDetails({ skill }: { skill: Skill }) {
               <PriceBadge price={skill.priceUsdc} />
             </div>
           </CardHeader>
-          <CardContent className="grid gap-4">
+          <CardContent className="grid gap-3">
             <CommandCopy command={command} />
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground px-0.5">
+              <Terminal className="size-3.5 shrink-0 text-primary" />
+              <span>Run in terminal to install and trigger checkout</span>
+            </div>
             <BrowserCheckout skill={skill} />
           </CardContent>
         </Card>
@@ -261,8 +268,53 @@ function BrowserCheckout({ skill }: { skill: Skill }) {
   const [open, setOpen] = useState(Boolean(installRequestId))
   const [resumePrivyCheckout, setResumePrivyCheckout] = useState(false)
 
-  // Selected checkout method: null shows stacked connect buttons, "x402" or "privy" shows active flow
-  const [selectedMethod, setSelectedMethod] = useState<"x402" | "privy" | null>(null)
+  // Validate checkout token with backend / Cloudflare KV
+  const tokenValidation = useQuery({
+    queryKey: ["validate-checkout-token", installRequestId, skill.id],
+    queryFn: () => validateInstallRequest(installRequestId!, skill.id),
+    enabled: Boolean(installRequestId),
+    staleTime: 5_000,
+    retry: false,
+  })
+
+  const [currentTime, setCurrentTime] = useState(() => Date.now())
+
+  useEffect(() => {
+    if (!tokenValidation.data?.data?.expiresAt) return
+    const timer = window.setInterval(() => {
+      setCurrentTime(Date.now())
+    }, 1_000)
+    return () => window.clearInterval(timer)
+  }, [tokenValidation.data?.data?.expiresAt])
+
+  const expiresTimestamp = tokenValidation.data?.data?.expiresAt
+    ? Date.parse(tokenValidation.data.data.expiresAt)
+    : null
+
+  const secondsRemaining = expiresTimestamp
+    ? Math.max(0, Math.floor((expiresTimestamp - currentTime) / 1_000))
+    : null
+
+  const isTokenExpired = Boolean(
+    (tokenValidation.data && !tokenValidation.data.valid) ||
+    tokenValidation.isError ||
+    (secondsRemaining !== null && secondsRemaining <= 0)
+  )
+
+  // Selected checkout method: null shows stacked connect buttons, "x402" or "privy" shows active flow.
+  // An existing Privy session already has an embedded wallet, so skip the
+  // method chooser when the checkout is opened for an authenticated user.
+  const [selectedMethod, setSelectedMethod] = useState<"x402" | "privy" | null>(() =>
+    author.authenticated ? "privy" : null,
+  )
+  const previousAuthenticated = useRef(author.authenticated)
+
+  useEffect(() => {
+    const becameAuthenticated = !previousAuthenticated.current && author.authenticated
+    previousAuthenticated.current = author.authenticated
+    if (!becameAuthenticated || !open || resumePrivyCheckout || selectedMethod !== null) return
+    setSelectedMethod("privy")
+  }, [author.authenticated, open, resumePrivyCheckout, selectedMethod])
 
   // Browser wallet state
   const [discoveredWallets, setDiscoveredWallets] = useState<DiscoveredWallet[]>([])
@@ -428,12 +480,15 @@ function BrowserCheckout({ skill }: { skill: Skill }) {
 
   function setCheckoutOpen(next: boolean) {
     setOpen(next)
-    if (!next && params.get("checkout") === "1") {
-      const updated = new URLSearchParams(params)
-      updated.delete("checkout")
-      setParams(updated, { replace: true })
+    if (next && author.authenticated) {
+      setSelectedMethod("privy")
     }
     if (!next) {
+      if (params.has("checkout")) {
+        const updated = new URLSearchParams(params)
+        updated.delete("checkout")
+        setParams(updated, { replace: true })
+      }
       setX402Step("idle")
       setSelectedMethod(null)
     }
@@ -719,22 +774,83 @@ function BrowserCheckout({ skill }: { skill: Skill }) {
   // Derived state for Privy
   const privyOwned = privyPurchaseAccess.data === true
 
+  if (!installRequestId) return null
+
   return (
     <Dialog open={open} onOpenChange={setCheckoutOpen}>
-      <DialogTrigger asChild>
-        <Button className="w-full">Pay with wallet</Button>
-      </DialogTrigger>
       <DialogContent className="sm:max-w-115">
-        <DialogHeader>
-          <DialogTitle>
-            {browserOwned || privyOwned
-              ? `Install ${skill.title}`
-              : `Purchase ${skill.title}`}
-          </DialogTitle>
-          <DialogDescription>
-            ${skill.priceUsdc} USDC · Verified AI agent bundle
-          </DialogDescription>
-        </DialogHeader>
+        {tokenValidation.isLoading ? (
+          <>
+            <DialogHeader>
+              <DialogTitle>Verifying checkout session…</DialogTitle>
+              <DialogDescription>Checking session token with SkillsBay</DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col items-center justify-center py-10 gap-3">
+              <Loader2 className="size-8 animate-spin text-primary" />
+              <p className="text-xs text-muted-foreground">Validating token…</p>
+            </div>
+          </>
+        ) : isTokenExpired ? (
+          <>
+            <DialogHeader>
+              <div className="flex items-center gap-2 text-destructive font-semibold">
+                <AlertCircle className="size-5 shrink-0" />
+                <span>Checkout session expired</span>
+              </div>
+              <DialogDescription className="mt-1">
+                {tokenValidation.data?.error || "This checkout session has expired or is invalid. Sessions are valid for 15 minutes."}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 pt-2">
+              <div className="rounded-lg border bg-muted/40 p-3.5 text-xs text-muted-foreground space-y-2">
+                <p className="font-medium text-foreground">How to start a new checkout:</p>
+                <p>Re-run the installation command in your terminal to generate a fresh checkout session:</p>
+                <div className="font-mono bg-background p-2 rounded border text-foreground text-[11px] select-all">
+                  npx skillsbay add {skill.id}
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setCheckoutOpen(false)}
+                >
+                  Dismiss
+                </Button>
+                <Button
+                  className="w-full"
+                  onClick={() => {
+                    navigator.clipboard.writeText(`npx skillsbay add ${skill.id}`)
+                    toast.success("Command copied to clipboard")
+                    setCheckoutOpen(false)
+                  }}
+                >
+                  <Copy className="size-3.5 mr-1.5" />
+                  Copy command & close
+                </Button>
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <DialogHeader>
+              <div className="flex items-center justify-between gap-2">
+                <DialogTitle>
+                  {browserOwned || privyOwned
+                    ? `Install ${skill.title}`
+                    : `Purchase ${skill.title}`}
+                </DialogTitle>
+                {secondsRemaining !== null && secondsRemaining > 0 ? (
+                  <span className="flex items-center gap-1 font-mono text-[11px] text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-full px-2 py-0.5 shrink-0">
+                    <Clock className="size-3" />
+                    {Math.floor(secondsRemaining / 60)}:{(secondsRemaining % 60).toString().padStart(2, "0")}
+                  </span>
+                ) : null}
+              </div>
+              <DialogDescription>
+                ${skill.priceUsdc} USDC · Verified AI agent bundle
+              </DialogDescription>
+            </DialogHeader>
 
         {selectedMethod === null ? (
           <div className="space-y-3 pt-2">
@@ -1128,6 +1244,8 @@ function BrowserCheckout({ skill }: { skill: Skill }) {
               </p>
             </div>
           </div>
+        )}
+          </>
         )}
       </DialogContent>
     </Dialog>

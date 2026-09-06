@@ -16,6 +16,7 @@ type Bindings = {
   PUBLIC_APP_ORIGIN?: string
   DB: D1Database
   SKILL_BUNDLES: R2Bucket
+  CHECKOUT_TOKENS?: KVNamespace
   INTERNAL_PUBLISH_TOKEN?: string
   GRAPH_API_URL?: string
   GRAPH_API_KEY?: string
@@ -467,12 +468,83 @@ app.get("/v1/skills/:namespace/:slug", async (c) => {
 app.get("/v1/install-requests/:id", async (c) => {
   const request = await c.env.DB.prepare("SELECT id, skill_id, status, expires_at FROM install_requests WHERE id = ?").bind(c.req.param("id")).first<{ id: string; skill_id: string; status: "pending" | "completed"; expires_at: string }>()
   if (!request) return c.json({ error: "Install request not found or already consumed" }, 404)
-  if (Date.parse(request.expires_at) <= Date.now()) { await c.env.DB.prepare("DELETE FROM install_requests WHERE id = ?").bind(request.id).run(); return c.json({ error: "Install request expired" }, 410) }
+  if (Date.parse(request.expires_at) <= Date.now()) {
+    await c.env.DB.prepare("DELETE FROM install_requests WHERE id = ?").bind(request.id).run()
+    if (c.env.CHECKOUT_TOKENS) {
+      await c.env.CHECKOUT_TOKENS.delete(`install_request:${request.id}`).catch(() => {})
+    }
+    return c.json({ error: "Install request expired" }, 410)
+  }
   if (request.status === "pending") return c.json({ data: { status: "pending", expiresAt: request.expires_at } })
   const markdown = await getBundle({ db: c.env.DB, bucket: c.env.SKILL_BUNDLES, skillId: request.skill_id })
   if (!markdown) return c.json({ error: "Bundle not found" }, 404)
   await c.env.DB.prepare("DELETE FROM install_requests WHERE id = ?").bind(request.id).run()
+  if (c.env.CHECKOUT_TOKENS) {
+    await c.env.CHECKOUT_TOKENS.delete(`install_request:${request.id}`).catch(() => {})
+  }
   return c.json({ data: { status: "completed", skillId: request.skill_id, markdown } }, 200, { "cache-control": "no-store" })
+})
+app.get("/v1/install-requests/:id/validate", async (c) => {
+  const id = c.req.param("id")
+  const skillId = c.req.query("skillId")
+
+  // Check Cloudflare KV first if bound
+  if (c.env.CHECKOUT_TOKENS) {
+    try {
+      const kvRaw = await c.env.CHECKOUT_TOKENS.get(`install_request:${id}`)
+      if (kvRaw) {
+        const tokenData = JSON.parse(kvRaw) as { id: string; skillId: string; status: string; expiresAt: string }
+        if (Date.parse(tokenData.expiresAt) <= Date.now()) {
+          await c.env.CHECKOUT_TOKENS.delete(`install_request:${id}`).catch(() => {})
+          return c.json({ valid: false, error: "Checkout session has expired", code: "EXPIRED" }, 410)
+        }
+        if (tokenData.status !== "pending") {
+          return c.json({ valid: false, error: "Checkout session has already been completed", code: "ALREADY_COMPLETED" }, 410)
+        }
+        if (skillId && tokenData.skillId !== skillId) {
+          return c.json({ valid: false, error: "Checkout token does not match this skill", code: "SKILL_MISMATCH" }, 400)
+        }
+        return c.json({ valid: true, data: { id: tokenData.id, skillId: tokenData.skillId, status: tokenData.status, expiresAt: tokenData.expiresAt } })
+      }
+    } catch (err) {
+      console.error("KV token validation lookup failed, falling back to D1", err)
+    }
+  }
+
+  // Fallback to D1 database
+  const request = await c.env.DB.prepare("SELECT id, skill_id, status, expires_at FROM install_requests WHERE id = ?").bind(id).first<{ id: string; skill_id: string; status: "pending" | "completed"; expires_at: string }>()
+  if (!request) {
+    return c.json({ valid: false, error: "Checkout session not found or already consumed", code: "NOT_FOUND" }, 404)
+  }
+  if (Date.parse(request.expires_at) <= Date.now()) {
+    await c.env.DB.prepare("DELETE FROM install_requests WHERE id = ?").bind(request.id).run()
+    if (c.env.CHECKOUT_TOKENS) {
+      await c.env.CHECKOUT_TOKENS.delete(`install_request:${id}`).catch(() => {})
+    }
+    return c.json({ valid: false, error: "Checkout session has expired", code: "EXPIRED" }, 410)
+  }
+  if (request.status !== "pending") {
+    return c.json({ valid: false, error: "Checkout session has already been completed", code: "ALREADY_COMPLETED" }, 410)
+  }
+  if (skillId && request.skill_id !== skillId) {
+    return c.json({ valid: false, error: "Checkout token does not match this skill", code: "SKILL_MISMATCH" }, 400)
+  }
+
+  // Populate KV cache with remaining TTL if available
+  if (c.env.CHECKOUT_TOKENS) {
+    try {
+      const remainingSeconds = Math.max(60, Math.floor((Date.parse(request.expires_at) - Date.now()) / 1_000))
+      await c.env.CHECKOUT_TOKENS.put(
+        `install_request:${id}`,
+        JSON.stringify({ id: request.id, skillId: request.skill_id, status: request.status, expiresAt: request.expires_at }),
+        { expirationTtl: remainingSeconds }
+      )
+    } catch (err) {
+      console.error("Failed to cache checkout token in KV", err)
+    }
+  }
+
+  return c.json({ valid: true, data: { id: request.id, skillId: request.skill_id, status: request.status, expiresAt: request.expires_at } })
 })
 app.post("/v1/install-requests/:id/complete", async (c) => {
   if (!c.env.SKILL_REGISTRY_ADDRESS || !c.env.BASE_SEPOLIA_RPC_URL) return c.json({ error: "Registry verification is not configured" }, 503)
@@ -491,6 +563,9 @@ app.post("/v1/install-requests/:id/complete", async (c) => {
   ])
   if (!purchased && chainAuthor?.toLowerCase() !== buyer) return c.json({ error: "This wallet does not have access to the requested skill" }, 403)
   await c.env.DB.prepare("UPDATE install_requests SET status = 'completed', buyer_address = ? WHERE id = ?").bind(buyer, request.id).run()
+  if (c.env.CHECKOUT_TOKENS) {
+    await c.env.CHECKOUT_TOKENS.delete(`install_request:${request.id}`).catch(() => {})
+  }
   return c.json({ data: { status: "completed", skillId: request.skill_id } })
 })
 app.post("/v1/install-requests/:namespace/:slug", async (c) => {
@@ -498,8 +573,20 @@ app.post("/v1/install-requests/:namespace/:slug", async (c) => {
   if (!splitSkillId(skillId)) return c.json({ error: "Invalid skill ID" }, 400)
   if (!(await listings(c.env)).data.some((skill) => skill.id === skillId)) return c.json({ error: "Skill not found" }, 404)
   const id = crypto.randomUUID()
-  const expiresAt = new Date(Date.now() + 15 * 60_000).toISOString()
+  const ttlSeconds = 15 * 60
+  const expiresAt = new Date(Date.now() + ttlSeconds * 1_000).toISOString()
   await c.env.DB.prepare("INSERT INTO install_requests (id, skill_id, expires_at) VALUES (?, ?, ?)").bind(id, skillId, expiresAt).run()
+  if (c.env.CHECKOUT_TOKENS) {
+    try {
+      await c.env.CHECKOUT_TOKENS.put(
+        `install_request:${id}`,
+        JSON.stringify({ id, skillId, status: "pending", expiresAt }),
+        { expirationTtl: ttlSeconds }
+      )
+    } catch (err) {
+      console.error("Failed to store checkout token in KV", err)
+    }
+  }
   return c.json({ data: { id, expiresAt } }, 201)
 })
 app.get("/v1/skills/:namespace/:slug/access/:buyer", async (c) => {
@@ -540,6 +627,9 @@ app.post("/v1/purchases/:namespace/:slug", async (c) => {
     if (!alreadyRecorded) await recordPurchase(c.env, { skillId, buyer: payload.buyer, amount: amount.toString(), paymentTransactionHash: payload.paymentTransactionHash })
     if (payload.installRequestId) {
       await c.env.DB.prepare("UPDATE install_requests SET status = 'completed', buyer_address = ?, payment_transaction_hash = ? WHERE id = ?").bind(payload.buyer.toLowerCase(), payload.paymentTransactionHash, payload.installRequestId).run()
+      if (c.env.CHECKOUT_TOKENS) {
+        await c.env.CHECKOUT_TOKENS.delete(`install_request:${payload.installRequestId}`).catch(() => {})
+      }
     }
     return c.json({ data: { skillId, buyer: payload.buyer, paymentTransactionHash: payload.paymentTransactionHash } }, 201)
   } catch (error) {
@@ -708,6 +798,9 @@ app.get("/v1/install/:namespace/:slug/content", async (c) => {
     if (installRequestId && installRequestId !== "1") {
       try {
         await c.env.DB.prepare("UPDATE install_requests SET status = 'completed', buyer_address = ?, payment_transaction_hash = ? WHERE id = ?").bind(result.payer.toLowerCase(), result.transaction, installRequestId).run()
+        if (c.env.CHECKOUT_TOKENS) {
+          await c.env.CHECKOUT_TOKENS.delete(`install_request:${installRequestId}`).catch(() => {})
+        }
       } catch (err) {
         console.error("Failed to complete install request after x402 settlement", err)
       }

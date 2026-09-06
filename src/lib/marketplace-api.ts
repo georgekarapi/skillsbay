@@ -59,6 +59,27 @@ export async function completeInstallRequest(input: { id: string; skillId: strin
   if (!response.ok) throw new Error(payload.error ?? "Could not unlock this installation")
 }
 
+export type InstallRequestValidation = {
+  valid: boolean
+  data?: { id: string; skillId: string; status: string; expiresAt: string }
+  error?: string
+  code?: string
+}
+
+export async function validateInstallRequest(id: string, skillId?: string): Promise<InstallRequestValidation> {
+  const query = skillId ? `?skillId=${encodeURIComponent(skillId)}` : ""
+  const response = await fetch(endpoint(`/v1/install-requests/${encodeURIComponent(id)}/validate${query}`))
+  const payload = (await response.json().catch(() => ({}))) as InstallRequestValidation
+  if (!response.ok) {
+    return {
+      valid: false,
+      error: payload.error ?? "Checkout session is expired or invalid",
+      code: payload.code ?? "INVALID",
+    }
+  }
+  return payload
+}
+
 export async function getAuthorDashboard(address: string) {
   const response = await fetch(endpoint(`/v1/authors/${address}`))
   if (!response.ok) throw new Error(`Author dashboard request failed (${response.status})`)
