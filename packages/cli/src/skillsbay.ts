@@ -348,6 +348,37 @@ export interface SkillsbayAddOptions {
   wallet?: 'auto' | 'env';
 }
 
+async function selectInstallationScope(
+  targetAgents: AgentType[],
+  options: SkillsbayAddOptions
+): Promise<boolean | symbol> {
+  let installGlobally = options.global ?? false;
+  const supportsGlobal = targetAgents.some((agent) => agents[agent]?.globalSkillsDir !== undefined);
+
+  if (options.global === undefined && !options.yes && supportsGlobal) {
+    const scope = await p.select({
+      message: 'Installation scope',
+      options: [
+        {
+          value: false,
+          label: 'Project',
+          hint: 'Install in the current directory (committed with your project)',
+        },
+        {
+          value: true,
+          label: 'Global',
+          hint: 'Install in your home directory (available across all projects)',
+        },
+      ],
+    });
+
+    if (isCancelled(scope)) return scope;
+    installGlobally = scope as boolean;
+  }
+
+  return installGlobally;
+}
+
 export async function runSkillsbayAdd(skillId: string, options: SkillsbayAddOptions = {}): Promise<void> {
   const spinner = p.spinner();
 
@@ -360,6 +391,38 @@ export async function runSkillsbayAdd(skillId: string, options: SkillsbayAddOpti
 
   p.log.step(`Found 1 skill: ${pc.cyan(skillTitle)} (${priceText})`);
   p.log.step(`Selected 1 skill: ${pc.cyan(skillId)}`);
+
+  let targetAgents: AgentType[] = [];
+  if (options.agent && options.agent.length > 0) {
+    targetAgents = options.agent as AgentType[];
+  } else {
+    spinner.start('Loading agents…');
+    const installedAgents = await detectInstalledAgents();
+    const totalAgents = Object.keys(agents).length;
+    spinner.stop(`${totalAgents} agents`);
+
+    if (options.yes || !process.stdin.isTTY) {
+      targetAgents = ensureUniversalAgents(installedAgents);
+      if (installedAgents.length === 1) {
+        p.log.info(`Installing to: ${pc.cyan(agents[installedAgents[0]!].displayName)}`);
+      } else {
+        p.log.info(`Installing to: ${installedAgents.map((a) => pc.cyan(agents[a].displayName)).join(', ')}`);
+      }
+    } else {
+      const selected = await selectAgentsInteractive({ global: options.global });
+      if (isCancelled(selected)) {
+        p.cancel('Installation cancelled');
+        return;
+      }
+      targetAgents = selected as AgentType[];
+    }
+  }
+
+  const installGlobally = await selectInstallationScope(targetAgents, options);
+  if (isCancelled(installGlobally)) {
+    p.cancel('Installation cancelled');
+    return;
+  }
 
   let markdown = '';
   const hasWalletKey = !!process.env.SKILLSBAY_PRIVATE_KEY;
@@ -398,35 +461,9 @@ export async function runSkillsbayAdd(skillId: string, options: SkillsbayAddOpti
     }
   }
 
-  let targetAgents: AgentType[] = [];
-  if (options.agent && options.agent.length > 0) {
-    targetAgents = options.agent as AgentType[];
-  } else {
-    spinner.start('Loading agents…');
-    const installedAgents = await detectInstalledAgents();
-    const totalAgents = Object.keys(agents).length;
-    spinner.stop(`${totalAgents} agents`);
-
-    if (options.yes || !process.stdin.isTTY) {
-      targetAgents = ensureUniversalAgents(installedAgents);
-      if (installedAgents.length === 1) {
-        p.log.info(`Installing to: ${pc.cyan(agents[installedAgents[0]!].displayName)}`);
-      } else {
-        p.log.info(`Installing to: ${installedAgents.map((a) => pc.cyan(agents[a].displayName)).join(', ')}`);
-      }
-    } else {
-      const selected = await selectAgentsInteractive({ global: options.global });
-      if (isCancelled(selected)) {
-        p.cancel('Installation cancelled');
-        return;
-      }
-      targetAgents = selected as AgentType[];
-    }
-  }
-
   spinner.start('Installing skill…');
   const installResult = await installSkillsbaySkill(skillId, markdown, targetAgents, {
-    global: options.global,
+    global: installGlobally,
     force: options.force,
   });
   spinner.stop('Installation complete');
