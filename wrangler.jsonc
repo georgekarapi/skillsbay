@@ -3,6 +3,7 @@
 	"name": "skillsbay",
 	"main": "./worker/index.ts",
 	"compatibility_date": "2026-09-04",
+	"workers_dev": false,
 	"routes": [
 		{
 			"pattern": "skillsbay.dev",
