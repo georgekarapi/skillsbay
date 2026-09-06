@@ -1,6 +1,6 @@
 {
   "name": "skillsbay",
-  "version": "0.2.7",
+  "version": "1.0.1",
   "description": "Pay-per-skill package manager for AI agents",
   "repository": {
     "type": "git",
@@ -8,7 +8,7 @@
   },
   "type": "module",
   "bin": {
-    "skillsbay": "./bin/cli.mjs"
+    "skillsbay": "bin/cli.mjs"
   },
   "files": [
     "dist",
