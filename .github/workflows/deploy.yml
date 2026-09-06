@@ -132,7 +132,7 @@ jobs:
       - name: Confirm the CLI version is new
         working-directory: packages/cli
         run: |
-          PACKAGE_VERSION="$(node -p \"require('./package.json').version\")"
+          PACKAGE_VERSION="$(node -p 'require("./package.json").version')"
           if npm view "skillsbay@${PACKAGE_VERSION}" version >/dev/null 2>&1; then
             echo "skillsbay@${PACKAGE_VERSION} is already published. Bump packages/cli/package.json before merging CLI changes."
             exit 1
