@@ -57,9 +57,26 @@ const baseSepoliaUsdc = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
 const BASE_SEPOLIA_CHAIN_ID = 84532
 const BASE_SEPOLIA_HEX = "0x14a34"
 
+type Eip1193Provider = {
+  request(args: { method: string; params?: unknown[] }): Promise<unknown>
+  on?(event: string, handler: (...args: unknown[]) => void): void
+  removeListener?(event: string, handler: (...args: unknown[]) => void): void
+  providers?: Eip1193Provider[]
+  isMetaMask?: boolean
+  isRabby?: boolean
+  isCoinbaseWallet?: boolean
+}
+
+type DiscoveredWallet = {
+  id: string
+  name: string
+  provider: Eip1193Provider
+}
+
 declare global {
   interface Window {
     __SKILLSBAY_INITIAL_SKILL__?: Skill
+    ethereum?: Eip1193Provider
   }
 }
 
@@ -248,8 +265,8 @@ function BrowserCheckout({ skill }: { skill: Skill }) {
   const [selectedMethod, setSelectedMethod] = useState<"x402" | "privy" | null>(null)
 
   // Browser wallet state
-  const hasInjectedProvider =
-    typeof window !== "undefined" && Boolean((window as unknown as { ethereum?: unknown }).ethereum)
+  const [discoveredWallets, setDiscoveredWallets] = useState<DiscoveredWallet[]>([])
+  const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null)
   const [browserAddress, setBrowserAddress] = useState<string | null>(null)
   const [chainId, setChainId] = useState<number | null>(null)
   const [connectingBrowser, setConnectingBrowser] = useState(false)
@@ -265,6 +282,31 @@ function BrowserCheckout({ skill }: { skill: Skill }) {
   const [pendingTransactionHash, setPendingTransactionHash] = useState<string | null>(() =>
     sessionStorage.getItem(pendingPaymentKey)
   )
+
+  const availableBrowserWallets = (() => {
+    const wallets = [...discoveredWallets]
+    const legacyProvider = typeof window === "undefined" ? undefined : window.ethereum
+    const legacyProviders = legacyProvider?.providers?.length ? legacyProvider.providers : legacyProvider ? [legacyProvider] : []
+    for (const [index, provider] of legacyProviders.entries()) {
+      if (wallets.some((wallet) => wallet.provider === provider)) continue
+      const name = provider.isRabby
+        ? "Rabby"
+        : provider.isCoinbaseWallet
+          ? "Coinbase Wallet"
+          : provider.isMetaMask
+            ? "MetaMask"
+            : "Browser wallet"
+      wallets.push({ id: `legacy-${index}`, name, provider })
+    }
+    return wallets
+  })()
+  const selectedWallet = selectedWalletId
+    ? availableBrowserWallets.find((wallet) => wallet.id === selectedWalletId)
+    : availableBrowserWallets.length === 1
+      ? availableBrowserWallets[0]
+      : undefined
+  const browserProvider = selectedWallet?.provider
+  const hasInjectedProvider = availableBrowserWallets.length > 0
 
   // Radix Dialog makes outside content inert while it is open. Privy's login
   // portal lives outside this checkout dialog, so close the checkout first or
@@ -286,14 +328,32 @@ function BrowserCheckout({ skill }: { skill: Skill }) {
     return () => window.clearTimeout(timer)
   }, [author.authenticated, resumePrivyCheckout])
 
+  // EIP-6963 avoids the ambiguous window.ethereum proxy created when multiple
+  // wallet extensions are installed. Keep the announced providers so a buyer
+  // can explicitly choose which extension should receive the request.
+  useEffect(() => {
+    const onAnnounce = (event: Event) => {
+      const detail = (event as CustomEvent<{ info?: { uuid?: string; name?: string }; provider?: Eip1193Provider }>).detail
+      if (!detail?.info?.uuid || !detail.provider) return
+      const id = detail.info.uuid
+      const name = detail.info.name || "Browser wallet"
+      const provider = detail.provider
+      setDiscoveredWallets((wallets) =>
+        wallets.some((wallet) => wallet.id === id)
+          ? wallets
+          : [...wallets, { id, name, provider }]
+      )
+    }
+
+    window.addEventListener("eip6963:announceProvider", onAnnounce)
+    window.dispatchEvent(new Event("eip6963:requestProvider"))
+    return () => window.removeEventListener("eip6963:announceProvider", onAnnounce)
+  }, [])
+
   // Detect and listen to injected wallet changes
   useEffect(() => {
-    if (!hasInjectedProvider) return
-    const eth = (window as unknown as { ethereum: {
-      on?(event: string, handler: (...args: unknown[]) => void): void
-      removeListener?(event: string, handler: (...args: unknown[]) => void): void
-      request(args: { method: string; params?: unknown[] }): Promise<unknown>
-    } }).ethereum
+    if (!browserProvider) return
+    const eth = browserProvider
 
     const handleAccounts = (accounts: unknown) => {
       const accList = accounts as string[]
@@ -328,7 +388,7 @@ function BrowserCheckout({ skill }: { skill: Skill }) {
       eth.removeListener?.("accountsChanged", handleAccounts)
       eth.removeListener?.("chainChanged", handleChain)
     }
-  }, [hasInjectedProvider])
+  }, [browserProvider])
 
   // Browser wallet USDC balance
   const browserUsdcQuery = useQuery({
@@ -379,8 +439,8 @@ function BrowserCheckout({ skill }: { skill: Skill }) {
     }
   }
 
-  async function connectBrowserWallet() {
-    if (!hasInjectedProvider) {
+  async function connectBrowserWallet(provider = browserProvider) {
+    if (!provider) {
       toast.error("No browser wallet extension detected.", {
         description: "Please install MetaMask, Rabby, or Coinbase Wallet, or use Privy.",
       })
@@ -388,7 +448,7 @@ function BrowserCheckout({ skill }: { skill: Skill }) {
     }
     setConnectingBrowser(true)
     try {
-      const eth = (window as unknown as { ethereum: { request(args: { method: string; params?: unknown[] }): Promise<unknown> } }).ethereum
+      const eth = provider
       const accounts = (await eth.request({ method: "eth_requestAccounts" })) as string[]
       if (accounts.length > 0) {
         setBrowserAddress(accounts[0])
@@ -408,10 +468,10 @@ function BrowserCheckout({ skill }: { skill: Skill }) {
   }
 
   async function switchToBaseSepolia() {
-    if (!hasInjectedProvider) return
+    if (!browserProvider) return
     setSwitchingNetwork(true)
     try {
-      const eth = (window as unknown as { ethereum: { request(args: { method: string; params?: unknown[] }): Promise<unknown> } }).ethereum
+      const eth = browserProvider
       await eth.request({
         method: "wallet_switchEthereumChain",
         params: [{ chainId: BASE_SEPOLIA_HEX }],
@@ -422,7 +482,7 @@ function BrowserCheckout({ skill }: { skill: Skill }) {
       const err = switchError as { code?: number; message?: string }
       if (err?.code === 4902 || String(err?.message).includes("Unrecognized chain")) {
         try {
-          const eth = (window as unknown as { ethereum: { request(args: { method: string; params?: unknown[] }): Promise<unknown> } }).ethereum
+          const eth = browserProvider
           await eth.request({
             method: "wallet_addEthereumChain",
             params: [
@@ -453,9 +513,9 @@ function BrowserCheckout({ skill }: { skill: Skill }) {
   }
 
   async function unlockCliWithBrowserWallet() {
-    if (!browserAddress || !installRequestId || installRequestId === "1") return
+    if (!browserAddress || !browserProvider || !installRequestId || installRequestId === "1") return
     try {
-      const eth = (window as unknown as { ethereum: { request(args: { method: string; params?: unknown[] }): Promise<unknown> } }).ethereum
+      const eth = browserProvider
       const walletClient = createWalletClient({ chain: baseSepolia, transport: custom(eth) })
       await completeInstallRequest({
         id: installRequestId,
@@ -476,7 +536,7 @@ function BrowserCheckout({ skill }: { skill: Skill }) {
   }
 
   async function payWithX402() {
-    if (!hasInjectedProvider) {
+    if (!browserProvider) {
       return connectBrowserWallet()
     }
     if (!browserAddress) {
@@ -501,7 +561,7 @@ function BrowserCheckout({ skill }: { skill: Skill }) {
     setPayingX402(true)
     setX402Step("signing")
     try {
-      const eth = (window as unknown as { ethereum: { request(args: { method: string; params?: unknown[] }): Promise<unknown> } }).ethereum
+      const eth = browserProvider
       const walletClient = createWalletClient({ chain: baseSepolia, transport: custom(eth) })
       const publicClient = createPublicClient({
         chain: baseSepolia,
@@ -688,7 +748,7 @@ function BrowserCheckout({ skill }: { skill: Skill }) {
               disabled={connectingBrowser}
               onClick={async () => {
                 setSelectedMethod("x402")
-                if (hasInjectedProvider && !browserAddress) {
+                if (availableBrowserWallets.length === 1 && !browserAddress) {
                   await connectBrowserWallet()
                 }
               }}
@@ -851,19 +911,44 @@ function BrowserCheckout({ skill }: { skill: Skill }) {
                     </p>
                   </div>
                 </div>
-                <Button
-                  onClick={connectBrowserWallet}
-                  disabled={connectingBrowser}
-                  className="w-full"
-                >
-                  {connectingBrowser ? (
-                    <>
-                      <Loader2 className="size-4 animate-spin mr-2" /> Connecting…
-                    </>
-                  ) : (
-                    "Connect Browser Wallet"
-                  )}
-                </Button>
+                {availableBrowserWallets.length > 1 ? (
+                  <div className="grid gap-2">
+                    <p className="text-xs font-medium text-muted-foreground">Choose a wallet extension</p>
+                    {availableBrowserWallets.map((wallet) => (
+                      <Button
+                        key={wallet.id}
+                        variant="outline"
+                        className="w-full justify-between"
+                        disabled={connectingBrowser}
+                        onClick={() => {
+                          setSelectedWalletId(wallet.id)
+                          void connectBrowserWallet(wallet.provider)
+                        }}
+                      >
+                        {wallet.name}
+                        {connectingBrowser && selectedWalletId === wallet.id ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <ChevronRight className="size-4" />
+                        )}
+                      </Button>
+                    ))}
+                  </div>
+                ) : (
+                  <Button
+                    onClick={() => void connectBrowserWallet()}
+                    disabled={connectingBrowser}
+                    className="w-full"
+                  >
+                    {connectingBrowser ? (
+                      <>
+                        <Loader2 className="size-4 animate-spin mr-2" /> Connecting…
+                      </>
+                    ) : (
+                      "Connect Browser Wallet"
+                    )}
+                  </Button>
+                )}
               </div>
             ) : (
               <div className="space-y-3">
