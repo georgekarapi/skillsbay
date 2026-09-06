@@ -1,6 +1,6 @@
 ---
 name: skillsbay
-description: Discover, purchase, and install paid AI-agent skills from SkillsBay using x402 USDC payments on Base Sepolia. Use when a task would benefit from an installed SKILL.md capability or when inspecting SkillsBay marketplace skills.
+description: Discover, purchase, and install paid AI-agent skills from SkillsBay using x402 USDC payments. Use when a task would benefit from an installed SKILL.md capability or when inspecting SkillsBay marketplace skills.
 ---
 
 # SkillsBay marketplace
@@ -17,7 +17,7 @@ the user’s funds without clear authorization or a pre-approved spending budget
 
 ## Marketplace endpoint
 
-For the current Base Sepolia deployment, set the API origin in the shell that
+For the current deployment, set the API origin in the shell that
 runs the CLI:
 
 ```bash
@@ -52,7 +52,7 @@ Skill IDs always have this shape:
 
 ## Purchase and install
 
-The current test deployment settles payments in Base Sepolia USDC. The agent
+The current test deployment settles payments in USDC. The agent
 wallet must hold enough test USDC for the listed skill price. Provide its key
 only through a short-lived shell environment variable; never write it to a
 repository, `SKILL.md`, source file, issue, or chat transcript.
@@ -87,8 +87,7 @@ different local skill version.
 
 - **No skills listed:** the Graph index may still be catching up, or no skills
   have been registered yet. Check `/v1/health` and retry after a short delay.
-- **402/payment error:** confirm the wallet uses the Base Sepolia network and
-  has enough test USDC.
+- **402/payment error:** confirm the wallet is funded and has enough test USDC.
 - **Existing file differs:** inspect the installed skill and use `--force` only
   with approval.
 - **`202 Payment settled`:** the purchase receipt is awaiting indexing. Wait
@@ -99,7 +98,7 @@ different local skill version.
 
 Do not publish a skill on behalf of a user unless they request it. Authors use
 the SkillsBay web dashboard, sign in with Privy, claim a permanent username,
-register metadata on Base Sepolia, and sign the encrypted bundle upload. Skill
+register metadata on-chain, and sign the encrypted bundle upload. Skill
 titles must use lowercase letters, numbers, and hyphens—no spaces. Successful
 purchases route 95% USDC directly to the author wallet and 5% to the platform
 treasury.

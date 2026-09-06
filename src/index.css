@@ -46,7 +46,6 @@
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.68 0.19 45);
-
 }
 
 @theme inline {
@@ -80,6 +79,7 @@
 html { font-family: var(--font-sans); background: var(--background); }
 body { @apply m-0 min-h-screen bg-background text-foreground antialiased; }
 button, input, textarea, select { font: inherit; }
+input[type="checkbox"], input[type="radio"] { accent-color: var(--primary); }
 ::selection { background: color-mix(in oklch, var(--primary) 20%, transparent); }
 
 /* ── Terminal command transition ─────────────────────────────────────── */

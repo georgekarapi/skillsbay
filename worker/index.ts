@@ -91,7 +91,7 @@ async function graphListings(env: Bindings): Promise<Listing[] | null> {
       author: namespace,
       authorAddress: skill.author.id,
       version: `${skill.majorVersion}.0.0`,
-      updatedAt: "Indexed on Base Sepolia",
+      updatedAt: "Indexed on-chain",
     }
   })
 }
@@ -598,6 +598,123 @@ app.get("/v1/internal/bundles/:namespace/:slug", async (c) => {
   if (!isInternalPublisher(c.req.raw, c.env)) return c.json({ error: "Unauthorized" }, 401)
   const markdown = await getBundle({ db: c.env.DB, bucket: c.env.SKILL_BUNDLES, skillId: skillIdFromParams(c.req) })
   return markdown ? c.text(markdown, 200, { "content-type": "text/markdown; charset=utf-8" }) : c.json({ error: "Bundle not found" }, 404)
+})
+// skills.sh import: scrape leaderboard and cache in-memory for 1 hour
+type SkillsShEntry = { id: string; slug: string; name: string; source: string; installs: number; url: string; rank: number }
+let skillsShCache: { data: SkillsShEntry[]; fetchedAt: number } | null = null
+const SKILLS_SH_CACHE_TTL = 60 * 60 * 1_000 // 1 hour
+
+function parseInstallCount(raw: string): number {
+  const trimmed = raw.trim().replace(/,/g, "")
+  if (/[Mm]$/.test(trimmed)) return Math.round(parseFloat(trimmed) * 1_000_000)
+  if (/[Kk]$/.test(trimmed)) return Math.round(parseFloat(trimmed) * 1_000)
+  return parseInt(trimmed, 10) || 0
+}
+
+async function fetchSkillsShLeaderboard(): Promise<SkillsShEntry[]> {
+  const now = Date.now()
+  if (skillsShCache && now - skillsShCache.fetchedAt < SKILLS_SH_CACHE_TTL) return skillsShCache.data
+
+  try {
+    const response = await fetch("https://skills.sh", { headers: { "accept": "text/html", "user-agent": "SkillsBay/1.0 (marketplace import)" } })
+    if (!response.ok) throw new Error(`skills.sh returned ${response.status}`)
+    const html = await response.text()
+
+    // skills.sh leaderboard rows are anchor tags with this structure:
+    //   <a href="/owner/repo/skill-slug" class="group grid ...">
+    //     <span class="font-mono">1</span>           ← rank
+    //     <h3 class="font-semibold">skill-name</h3>  ← display name
+    //     <p class="font-mono">owner/repo</p>         ← source
+    //     <svg ... aria-label="Weekly installs: ..." /> ← sparkline (ignore numbers here)
+    //     <span class="font-mono text-sm">3.3M</span>  ← install count
+    //   </a>
+    //
+    // Collapsed "more from" rows use <div role="button"> not <a>, so they are NOT matched.
+    // We match each <a href="/path"> row, then extract the h3 name and the install count
+    // from the final <span class="font-mono text-sm"> in the row.
+
+    const entries: SkillsShEntry[] = []
+    const seen = new Set<string>()
+    const skipPrefixes = new Set(["docs", "agent", "topic", "packs", "audits", "about", "contact", "privacy", "terms", "trending", "hot", "official", "search", "internal", ".well-known", "debug-security", "picks", "package", "cli", "p", "r", "s"])
+
+    // Match skill row anchors — each skill row starts with <a ... href="/owner/repo/skill">
+    // We capture from the href to the closing </a> to scope our inner regex searches.
+    const rowRegex = /<a\s[^>]*?href="\/([^"]+?\/[^"]+?\/[^"]+?)"[^>]*>[\s\S]*?<\/a>/g
+    let rowMatch: RegExpExecArray | null
+
+    while ((rowMatch = rowRegex.exec(html)) !== null) {
+      const fullPath = rowMatch[1]
+      const rowHtml = rowMatch[0]
+      const segments = fullPath.split("/")
+
+      if (segments.length < 3) continue
+      if (skipPrefixes.has(segments[0])) continue
+      if (seen.has(fullPath)) continue
+
+      // Skip rows that don't contain a skill heading (h3) — these are non-skill links
+      if (!/<h3[\s>]/.test(rowHtml)) continue
+
+      let source: string
+      let slug: string
+      if (segments[0] === "site") {
+        source = segments[1]
+        slug = segments.slice(2).join("/")
+      } else {
+        source = `${segments[0]}/${segments[1]}`
+        slug = segments.slice(2).join("/")
+      }
+      if (!slug) continue
+
+      // Extract skill display name from <h3>...</h3>
+      const h3Match = rowHtml.match(/<h3[^>]*>([^<]+)<\/h3>/)
+      const name = h3Match
+        ? h3Match[1].trim()
+        : slug.split("-").map((w: string) => w[0]?.toUpperCase() + w.slice(1)).join(" ")
+
+      // Extract install count from <span class="font-mono text-sm ...">3.3M</span>
+      // This is the last such span in the row, after the sparkline SVG.
+      const installSpans = [...rowHtml.matchAll(/<span[^>]*class="[^"]*font-mono[^"]*text-sm[^"]*"[^>]*>([\d,.]+[KkMm]?)<\/span>/g)]
+      const installs = installSpans.length > 0
+        ? parseInstallCount(installSpans[installSpans.length - 1][1])
+        : 0
+
+      // Extract rank from the first <span class="... font-mono">N</span> in the row
+      const rankMatch = rowHtml.match(/<span[^>]*class="[^"]*font-mono[^"]*"[^>]*>(\d+)<\/span>/)
+      const rank = rankMatch ? parseInt(rankMatch[1], 10) : entries.length + 1
+
+      seen.add(fullPath)
+      entries.push({ id: fullPath, slug, name, source, installs, rank, url: `https://skills.sh/${fullPath}` })
+    }
+
+    // Preserve the original leaderboard order from skills.sh (sorted by all-time installs)
+    entries.sort((a, b) => a.rank - b.rank)
+    const top = entries.slice(0, 50)
+    skillsShCache = { data: top, fetchedAt: now }
+    return top
+  } catch (error) {
+    console.error("Failed to fetch skills.sh leaderboard", error)
+    return skillsShCache?.data ?? []
+  }
+}
+
+app.get("/v1/skills-sh", async (c) => {
+  const entries = await fetchSkillsShLeaderboard()
+  const data: Listing[] = entries.map((entry, index) => ({
+    id: `skills-sh:${entry.id}`,
+    namespace: entry.source.includes("/") ? entry.source.split("/")[0] : entry.source,
+    slug: entry.slug,
+    title: entry.name,
+    summary: `Open-source agent skill from skills.sh`,
+    category: "Agent skill",
+    priceUsdc: "0.00",
+    paidInstalls: entry.installs,
+    trend: 0,
+    author: entry.source,
+    authorAddress: "",
+    version: "—",
+    updatedAt: "skills.sh",
+  }))
+  return c.json({ data, source: "skills.sh" as const })
 })
 
 export default app

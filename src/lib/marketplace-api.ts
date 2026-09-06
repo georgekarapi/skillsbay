@@ -20,7 +20,7 @@ function endpoint(path: string) {
 }
 
 function normalizeSkill(skill: ApiListing, index: number): Skill {
-  return { ...skill, rank: skill.rank ?? index + 1, summary: skill.summary ?? "A paid agent skill published on SkillsBay.", category: skill.category ?? "Agent skill", trend: skill.trend ?? 0, authorAddress: skill.authorAddress ?? skill.author, updatedAt: skill.updatedAt ?? "Indexed on Base Sepolia" } as Skill
+  return { ...skill, rank: skill.rank ?? index + 1, summary: skill.summary ?? "A paid agent skill published on SkillsBay.", category: skill.category ?? "Agent skill", trend: skill.trend ?? 0, authorAddress: skill.authorAddress ?? skill.author, updatedAt: skill.updatedAt ?? "Indexed on-chain" } as Skill
 }
 
 export async function getMarketplaceSkills() {
@@ -125,4 +125,17 @@ export async function checkUsernameAvailability(username: string) {
   if (!response.ok) throw new Error(`Username availability request failed (${response.status})`)
   const payload = await response.json() as { data: { username: string; available: boolean } }
   return payload.data
+}
+
+export async function getSkillsShSkills() {
+  const response = await fetch(endpoint("/v1/skills-sh"))
+  if (!response.ok) throw new Error(`skills.sh import request failed (${response.status})`)
+  const payload = await response.json() as { data: Array<Omit<Skill, "rank" | "source" | "externalUrl">> }
+  return payload.data.map((skill, index): Skill => ({
+    ...skill,
+    rank: index + 1,
+    source: "skills.sh",
+    // The id is `skills-sh:<full-path>` (e.g., `skills-sh:owner/repo/slug` or `skills-sh:site/domain/slug`)
+    externalUrl: `https://skills.sh/${skill.id.replace(/^skills-sh:/, "")}`,
+  }))
 }

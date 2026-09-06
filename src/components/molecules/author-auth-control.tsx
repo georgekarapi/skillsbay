@@ -58,7 +58,7 @@ export function AuthorAuthControl() {
               onClick={copyWallet}
               type="button"
             >
-              {walletLabel} · Base Sepolia
+              {walletLabel}
             </button>
           </div>
         </DropdownMenuLabel>

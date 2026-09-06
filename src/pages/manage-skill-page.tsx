@@ -122,7 +122,7 @@ export function ManageSkillPage() {
       toast.success("Update submitted", { description: `${transaction.hash.slice(0, 10)}…${transaction.hash.slice(-8)}` })
       if (hasMarkdownChanges) await uploadBundle()
       setSavedMarkdown(markdown)
-      toast.success("Skill updated", { description: hasMarkdownChanges ? "The updated encrypted SKILL.md is ready for new installs." : "Price was updated on Base Sepolia." })
+      toast.success("Skill updated", { description: hasMarkdownChanges ? "The updated encrypted SKILL.md is ready for new installs." : "Price was updated successfully." })
     } catch (error) {
       const description = error instanceof Error ? error.message : "Please try again."
       toast.error("Skill was not updated", { description })

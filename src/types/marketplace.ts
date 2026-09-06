@@ -14,6 +14,8 @@ export type Skill = {
   version: string
   updatedAt: string
   featured?: boolean
+  source?: "skillsbay" | "skills.sh"
+  externalUrl?: string
 }
 
 export type Sale = {

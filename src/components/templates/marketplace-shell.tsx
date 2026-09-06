@@ -17,8 +17,6 @@ export function MarketplaceShell({ children }: { children: ReactNode }) {
             </a>
           </div>
           <div className="flex items-center gap-4">
-            <span>Base Sepolia · The Graph · Privy</span>
-            <span className="hidden h-3 w-px bg-border sm:inline-block" aria-hidden="true" />
             <ModeToggle />
           </div>
         </div>

@@ -30,7 +30,7 @@ type Story = StoryObj<typeof SkillLeaderboard>
 
 export const Leaderboard: Story = {}
 export const Hero: Story = { render: () => <HeroSection /> }
-export const SkillListRow: Story = { render: () => <SkillRow skill={sampleStorySkill} /> }
+export const SkillListRow: Story = { render: () => <SkillRow skill={sampleStorySkill} displayRank={1} /> }
 export const Header: Story = { render: () => <SiteHeader /> }
 export const AuthorDashboard: Story = { render: () => <AuthorOverview /> }
 

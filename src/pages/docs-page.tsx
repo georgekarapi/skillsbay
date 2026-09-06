@@ -16,6 +16,11 @@ import {
   Sparkles,
   Server,
   CheckCircle2,
+  Download,
+  Info,
+  Search,
+  ListFilter,
+  Sliders,
 } from "lucide-react"
 import { MarketplaceShell } from "@/components/templates/marketplace-shell"
 import { Badge } from "@/components/ui/badge"
@@ -58,26 +63,29 @@ function CodeSnippet({ code, caption }: CodeBlockProps) {
   }
 
   return (
-    <div className="relative my-3 overflow-hidden rounded-xl border border-border/80 bg-muted/40 font-mono text-xs">
+    <div className="group/code relative my-3 overflow-hidden rounded-xl border border-border/80 bg-card/60 dark:bg-muted/30 font-mono text-xs shadow-2xs transition-all hover:border-border">
       {caption && (
-        <div className="flex items-center justify-between border-b border-border/60 bg-muted/70 px-4 py-2 text-[11px] text-muted-foreground">
-          <span className="font-mono">{caption}</span>
+        <div className="flex items-center justify-between border-b border-border/60 bg-muted/60 px-3.5 py-2 text-[11px] text-muted-foreground">
+          <span className="font-mono font-medium text-foreground/80 flex items-center gap-1.5">
+            <Terminal className="size-3 text-muted-foreground" />
+            {caption}
+          </span>
           <button
             type="button"
             onClick={handleCopy}
-            className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
+            className="flex items-center gap-1 rounded px-1.5 py-0.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-all active:scale-95 cursor-pointer"
           >
             {copied ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
-            <span>{copied ? "Copied" : "Copy"}</span>
+            <span className={copied ? "text-emerald-500 font-medium" : ""}>{copied ? "Copied" : "Copy"}</span>
           </button>
         </div>
       )}
-      <div className="overflow-x-auto p-4 leading-relaxed text-foreground/90">
+      <div className="overflow-x-auto p-3.5 leading-relaxed text-foreground/90">
         {!caption && (
           <button
             type="button"
             onClick={handleCopy}
-            className="absolute right-3 top-3 rounded-md bg-muted/80 p-1.5 text-muted-foreground hover:text-foreground transition-colors"
+            className="absolute right-2.5 top-2.5 rounded-md bg-muted/80 p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-all active:scale-95 cursor-pointer"
             title="Copy code"
           >
             {copied ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
@@ -128,7 +136,7 @@ export function DocsPage() {
             <Sparkles className="size-3" />
             Documentation
           </Badge>
-          <span className="text-xs text-muted-foreground">v0.2 · Base Sepolia · x402</span>
+          <span className="text-xs text-muted-foreground">v0.2 · x402 Live</span>
         </div>
         <h1 className="mt-3 text-3xl sm:text-4xl font-semibold tracking-[-0.04em]">
           SkillsBay Architecture & Integration Guide
@@ -176,7 +184,7 @@ export function DocsPage() {
                   Live Registry
                 </div>
                 <p className="leading-snug">
-                  Smart contract registry deployed on Base Sepolia with instant 95/5 USDC revenue splits.
+                  Smart contract registry deployed with instant 95/5 USDC revenue splits.
                 </p>
                 <Link
                   to="/dashboard/skills/new"
@@ -267,7 +275,7 @@ export function DocsPage() {
                   <h4 className="font-semibold text-foreground">Author Publishes a Skill</h4>
                   <p className="text-xs text-muted-foreground mt-1">
                     An author signs in with Privy, claims their permanent publisher username, calls{" "}
-                    a skill is registered on Base Sepolia, and its private <code className="text-foreground font-mono">SKILL.md</code> bundle is published to SkillsBay.
+                    a skill is registered on-chain, and its private <code className="text-foreground font-mono">SKILL.md</code> bundle is published to SkillsBay.
                   </p>
                 </li>
 
@@ -351,140 +359,394 @@ export function DocsPage() {
           </section>
 
           {/* 3. CLI Guide */}
-          <section id="cli-guide" className="scroll-mt-24 space-y-6">
+          <section id="cli-guide" className="scroll-mt-24 space-y-8">
             <div className="border-b pb-4">
-              <h2 className="text-2xl font-semibold tracking-tight">3. CLI & Installation Commands</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Command-line interface reference for developers and autonomous agents.
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
+                <Terminal className="size-3.5" />
+                <span>Command Line Tool</span>
+              </div>
+              <h2 className="mt-1 text-2xl sm:text-3xl font-semibold tracking-tight">3. CLI & Installation Commands</h2>
+              <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">
+                Command-line reference for developers and autonomous agents with native x402 HTTP micro-settlement.
               </p>
             </div>
 
-            <p className="text-sm text-muted-foreground">
-              You can run the CLI without prior installation using <code className="text-foreground font-mono">npx</code>,
-              or install it globally using your favorite package manager.
-            </p>
+            {/* Quick-run Banner */}
+            <div className="rounded-xl border border-border/80 bg-linear-to-r from-card via-muted/20 to-card p-4 sm:p-5 shadow-xs">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-foreground text-sm">Instant Execution with npx</span>
+                    <Badge variant="secondary" className="text-[10px] font-mono text-primary bg-primary/10 border-primary/20">
+                      Zero Install
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground max-w-lg">
+                    Run commands directly in any terminal or autonomous agent container. Alternatively, install globally with{" "}
+                    <code className="font-mono text-foreground">npm i -g @skillsbay/cli</code>.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 self-start sm:self-auto">
+                  <div className="flex items-center gap-2 rounded-lg border border-border/80 bg-background/90 px-3 py-1.5 font-mono text-xs shadow-2xs">
+                    <span className="text-muted-foreground/60 select-none">$</span>
+                    <span className="text-foreground"><CommandText text="npx skillsbay --help" /></span>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-            <Tabs defaultValue="add" className="w-full">
-              <TabsList className="grid w-full grid-cols-4 max-w-md">
-                <TabsTrigger value="add">add</TabsTrigger>
-                <TabsTrigger value="info">info</TabsTrigger>
-                <TabsTrigger value="search">search</TabsTrigger>
-                <TabsTrigger value="list">list / rm</TabsTrigger>
-              </TabsList>
+            {/* Interactive CLI Studio Showcase */}
+            <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm">
+              {/* Window Title Bar */}
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 bg-muted/40 px-4 py-3 sm:px-5">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex items-center gap-1.5" aria-hidden="true">
+                    <div className="size-2.5 rounded-full bg-[#ff5f56] border border-[#e0443e]/50 shadow-2xs" />
+                    <div className="size-2.5 rounded-full bg-[#ffbd2e] border border-[#dea123]/50 shadow-2xs" />
+                    <div className="size-2.5 rounded-full bg-[#27c93f] border border-[#1aab29]/50 shadow-2xs" />
+                  </div>
+                  <span className="ml-1.5 font-mono text-xs font-medium text-foreground/80">
+                    skillsbay-cli &mdash; commands reference
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                    <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    x402 Live
+                  </span>
+                </div>
+              </div>
 
-              <TabsContent value="add" className="space-y-4 pt-4">
-                <p className="text-sm text-muted-foreground">
-                  Purchases and installs a skill from the marketplace. If running in a human terminal without a wallet key,
-                  it offers a 1-click browser checkout. If running inside an agent with an environment key, it pays automatically.
-                </p>
-                <CodeSnippet
-                  caption="Basic Usage"
-                  code={`# Purchase and install interactively
-npx skillsbay add karapi/substreams-deployer
+              {/* Tabs Navigation */}
+              <Tabs defaultValue="add" className="w-full">
+                <div className="border-b border-border/60 bg-muted/20 px-4 py-2.5 sm:px-5">
+                  <TabsList className="grid w-full grid-cols-2 gap-1.5 bg-muted/70 p-1 sm:grid-cols-4 sm:max-w-xl">
+                    <TabsTrigger value="add" className="gap-2 font-mono text-xs">
+                      <Download className="size-3.5 text-primary" />
+                      <span>add / i</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="info" className="gap-2 font-mono text-xs">
+                      <Info className="size-3.5 text-amber-500" />
+                      <span>info</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="search" className="gap-2 font-mono text-xs">
+                      <Search className="size-3.5 text-sky-500" />
+                      <span>search</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="list" className="gap-2 font-mono text-xs">
+                      <ListFilter className="size-3.5 text-violet-500" />
+                      <span>list & rm</span>
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
 
-# Shorthand aliases
-npx skillsbay i karapi/substreams-deployer`}
-                />
-                <CodeSnippet
-                  caption="Autonomous Agent Execution (Zero prompts)"
-                  code={`# Autonomous mode using agent's funded private key (x402)
-SKILLSBAY_PRIVATE_KEY=0x... npx skillsbay add karapi/substreams-deployer --wallet env -y
+                <div className="p-4 sm:p-6 space-y-6">
+                  {/* TAB 1: ADD */}
+                  <TabsContent value="add" className="space-y-6 mt-0">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-[10px] font-mono uppercase bg-primary/10 text-primary border-primary/25">
+                          Primary Command
+                        </Badge>
+                        <h3 className="text-base font-semibold text-foreground font-mono">
+                          skillsbay add &lt;author/skill&gt;
+                        </h3>
+                      </div>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        Purchases and installs a skill from the marketplace. If executed in a human interactive terminal without an exported private key, it launches a 1-click browser checkout. When called by an autonomous AI agent with an environment key, it pays automatically via HTTP 402.
+                      </p>
+                    </div>
 
-# Specify target agents explicitly
-npx skillsbay add karapi/substreams-deployer -a claude-code,cursor -y
+                    <div className="grid gap-5 lg:grid-cols-2">
+                      <div className="flex flex-col justify-between rounded-xl border border-border/70 bg-muted/20 p-4 space-y-3">
+                        <div>
+                          <div className="flex items-center justify-between pb-1 border-b border-border/40">
+                            <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                              <span className="size-2 rounded-full bg-primary" />
+                              1. Interactive Developer Flow
+                            </span>
+                            <span className="text-[10px] text-muted-foreground font-mono">1-click browser checkout</span>
+                          </div>
+                          <CodeSnippet
+                            caption="Interactive Terminal Usage"
+                            code={`# Purchase and install interactively
+npx skillsbay add thegraph/substreams-deployer
 
-# Install globally across all project directories
-npx skillsbay add karapi/substreams-deployer -g -y`}
-                />
-              </TabsContent>
+# Shorthand alias
+npx skillsbay i thegraph/substreams-deployer`}
+                          />
+                        </div>
+                        <p className="text-[11px] text-muted-foreground leading-relaxed">
+                          Prompts to confirm author and price. Automatically links to detected agent environments (<code className="font-mono text-foreground">.claude/skills</code>, <code className="font-mono text-foreground">.cursor/skills</code>, <code className="font-mono text-foreground">.agents/skills</code>).
+                        </p>
+                      </div>
 
-              <TabsContent value="info" className="space-y-4 pt-4">
-                <p className="text-sm text-muted-foreground">
-                  Inspect a skill’s metadata, author, price, and version before purchasing.
-                </p>
-                <CodeSnippet
-                  caption="Inspect Skill Info"
-                  code={`npx skillsbay info karapi/substreams-deployer
+                      <div className="flex flex-col justify-between rounded-xl border border-border/70 bg-muted/20 p-4 space-y-3">
+                        <div>
+                          <div className="flex items-center justify-between pb-1 border-b border-border/40">
+                            <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                              <span className="size-2 rounded-full bg-emerald-500" />
+                              2. Autonomous Agent Execution
+                            </span>
+                            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono font-medium">Zero prompts (-y)</span>
+                          </div>
+                          <CodeSnippet
+                            caption="Autonomous Execution (HTTP 402)"
+                            code={`# Self-funded agent paying via EVM private key
+SKILLSBAY_PRIVATE_KEY=0x... npx skillsbay add thegraph/substreams-deployer --wallet env -y
 
-# Output example:
-# substreams-deployer
-# Author:       karapi
-# Price:        $15.00 USDC
-# Version:      1.0.0
-# Paid Installs: 142
-# Description:  Build and deploy Substreams pipelines.`}
-                />
-              </TabsContent>
+# Explicitly specify target agents
+npx skillsbay add thegraph/substreams-deployer -a claude-code,cursor -y`}
+                          />
+                        </div>
+                        <p className="text-[11px] text-muted-foreground leading-relaxed">
+                          Autonomous mode runs headlessly. The agent signs the USDC transfer, settles on-chain, and downloads the private bundle with zero manual interaction.
+                        </p>
+                      </div>
+                    </div>
 
-              <TabsContent value="search" className="space-y-4 pt-4">
-                <p className="text-sm text-muted-foreground">
-                  Query the live marketplace registry directly from your terminal.
-                </p>
-                <CodeSnippet
-                  caption="Search Marketplace"
-                  code={`# Search for Substreams or Graph skills
+                    <div className="rounded-xl border border-border/70 bg-muted/30 p-3.5 text-xs text-muted-foreground flex items-start gap-3">
+                      <Zap className="size-4 text-amber-500 shrink-0 mt-0.5" />
+                      <div className="space-y-1">
+                        <span className="font-semibold text-foreground">Global installation flag (-g): </span>
+                        <span>
+                          Add <code className="font-mono text-foreground">-g</code> to install into user-level directories (<code className="font-mono text-foreground">~/.claude/skills</code>, <code className="font-mono text-foreground">~/.openclaw/skills</code>) so all your coding projects share the skill across sessions.
+                        </span>
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  {/* TAB 2: INFO */}
+                  <TabsContent value="info" className="space-y-6 mt-0">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-[10px] font-mono uppercase bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25">
+                          Metadata Inspector
+                        </Badge>
+                        <h3 className="text-base font-semibold text-foreground font-mono">
+                          skillsbay info &lt;author/skill&gt;
+                        </h3>
+                      </div>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        Inspect a skill’s metadata, author verification, USDC price, and version before initiating a purchase.
+                      </p>
+                    </div>
+
+                    <div className="grid gap-5 lg:grid-cols-2">
+                      <div className="space-y-2">
+                        <span className="text-xs font-semibold text-foreground block">
+                          Inspection Command
+                        </span>
+                        <CodeSnippet
+                          caption="Inspect Skill"
+                          code={`# Query live onchain registry metadata
+npx skillsbay info thegraph/substreams-deployer`}
+                        />
+                        <p className="text-[11px] text-muted-foreground leading-relaxed">
+                          Fetches cryptographic publisher verification, current version, and verified install counts from The Graph and the smart contract registry.
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <span className="text-xs font-semibold text-foreground block">
+                          Terminal Output Preview
+                        </span>
+                        <div className="rounded-xl border border-border/80 bg-background/90 p-4 font-mono text-xs leading-relaxed shadow-2xs">
+                          <div className="text-emerald-600 dark:text-emerald-400 font-medium mb-2.5 flex items-center gap-1.5">
+                            <CheckCircle2 className="size-3.5" />
+                            <span>Registry query resolved</span>
+                          </div>
+                          <div className="space-y-1.5 text-foreground/90">
+                            <div className="flex justify-between border-b border-border/40 pb-1">
+                              <span className="text-muted-foreground">Skill:</span>
+                              <span className="font-semibold text-primary">thegraph/substreams-deployer</span>
+                            </div>
+                            <div className="flex justify-between border-b border-border/40 pb-1">
+                              <span className="text-muted-foreground">Publisher:</span>
+                              <span>karapi (0x71C...392)</span>
+                            </div>
+                            <div className="flex justify-between border-b border-border/40 pb-1">
+                              <span className="text-muted-foreground">Price:</span>
+                              <span className="font-semibold text-emerald-600 dark:text-emerald-400">0.25 USDC</span>
+                            </div>
+                            <div className="flex justify-between border-b border-border/40 pb-1">
+                              <span className="text-muted-foreground">Version:</span>
+                              <span>1.0.0</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Paid Installs:</span>
+                              <span>142 verified onchain</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  {/* TAB 3: SEARCH */}
+                  <TabsContent value="search" className="space-y-6 mt-0">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-[10px] font-mono uppercase bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/25">
+                          Registry Discovery
+                        </Badge>
+                        <h3 className="text-base font-semibold text-foreground font-mono">
+                          skillsbay search &lt;query&gt;
+                        </h3>
+                      </div>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        Query the live marketplace registry directly from your terminal or from inside an automated agent routine.
+                      </p>
+                    </div>
+
+                    <div className="grid gap-5 lg:grid-cols-2">
+                      <div className="space-y-2">
+                        <span className="text-xs font-semibold text-foreground block">
+                          Search Commands
+                        </span>
+                        <CodeSnippet
+                          caption="Query Registry"
+                          code={`# Search for Substreams or Graph skills
 npx skillsbay search substreams
 
 # Search for trading or DeFi skills
 npx skillsbay search defi`}
-                />
-              </TabsContent>
+                        />
+                        <p className="text-[11px] text-muted-foreground leading-relaxed">
+                          Matches across titles, summaries, tags, and publisher usernames in real time.
+                        </p>
+                      </div>
 
-              <TabsContent value="list" className="space-y-4 pt-4">
-                <p className="text-sm text-muted-foreground">
-                  Audit and manage already installed skills across all detected agent folders.
-                </p>
-                <CodeSnippet
-                  caption="List & Remove"
-                  code={`# List all installed skills across all agent environments
-npx skillsbay list
+                      <div className="space-y-2">
+                        <span className="text-xs font-semibold text-foreground block">
+                          Terminal Search Output
+                        </span>
+                        <div className="rounded-xl border border-border/80 bg-background/90 p-4 font-mono text-xs leading-relaxed shadow-2xs">
+                          <div className="text-muted-foreground text-[11px] mb-3 pb-1 border-b border-border/40">
+                            $ npx skillsbay search defi
+                          </div>
+                          <div className="space-y-3">
+                            <div className="border-b border-border/40 pb-2">
+                              <div className="font-semibold text-primary">defi/audited-automation</div>
+                              <div className="text-[11px] text-muted-foreground mt-0.5">Price: 0.80 USDC &middot; 318 installs</div>
+                              <div className="text-xs text-foreground/80 mt-1">Automated yield and rebalancing routines for EVM.</div>
+                            </div>
+                            <div>
+                              <div className="font-semibold text-primary">defi/solana-dex-arbitrage</div>
+                              <div className="text-[11px] text-muted-foreground mt-0.5">Price: 1.20 USDC &middot; 145 installs</div>
+                              <div className="text-xs text-foreground/80 mt-1">Cross-pool liquidity watcher and swap routing.</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </TabsContent>
 
-# Remove an installed skill
+                  {/* TAB 4: LIST & RM */}
+                  <TabsContent value="list" className="space-y-6 mt-0">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-[10px] font-mono uppercase bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/25">
+                          Workspace Management
+                        </Badge>
+                        <h3 className="text-base font-semibold text-foreground font-mono">
+                          skillsbay list / remove
+                        </h3>
+                      </div>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        Audit installed skills across detected agent frameworks and safely unlink them from project or global directories.
+                      </p>
+                    </div>
+
+                    <div className="grid gap-5 lg:grid-cols-2">
+                      <div className="space-y-3">
+                        <span className="text-xs font-semibold text-foreground block">
+                          List Installed Skills
+                        </span>
+                        <CodeSnippet
+                          caption="Audit Installed Skills"
+                          code={`# List all installed skills across all agent environments
+npx skillsbay list`}
+                        />
+                        <div className="rounded-xl border border-border/80 bg-background/90 p-3.5 font-mono text-xs leading-relaxed text-muted-foreground shadow-2xs">
+                          <div className="text-foreground font-medium mb-1.5">Detected Agent Workspaces:</div>
+                          <div className="space-y-1">
+                            <div>&bull; Claude Code: <span className="text-emerald-600 dark:text-emerald-400">~/.claude/skills (2 linked)</span></div>
+                            <div>&bull; Cursor: <span className="text-emerald-600 dark:text-emerald-400">.cursor/skills (1 linked)</span></div>
+                            <div>&bull; Antigravity: <span className="text-emerald-600 dark:text-emerald-400">.agents/skills (2 linked)</span></div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <span className="text-xs font-semibold text-foreground block">
+                          Remove Installed Skill
+                        </span>
+                        <CodeSnippet
+                          caption="Uninstall Skill"
+                          code={`# Cleanly unlink and delete local bundle
 npx skillsbay remove substreams-deployer`}
-                />
-              </TabsContent>
-            </Tabs>
+                        />
+                        <div className="rounded-xl border border-border/80 bg-background/90 p-3.5 font-mono text-xs leading-relaxed text-muted-foreground shadow-2xs">
+                          <div className="text-emerald-600 dark:text-emerald-400 font-medium mb-1 flex items-center gap-1.5">
+                            <CheckCircle2 className="size-3.5" />
+                            <span>Unlinked symlinks from agent directories</span>
+                          </div>
+                          <div className="text-foreground/90 mt-1">Canonical bundle safely removed from storage.</div>
+                        </div>
+                      </div>
+                    </div>
+                  </TabsContent>
+                </div>
+              </Tabs>
+            </div>
 
-            {/* Flags table */}
-            <div className="overflow-x-auto rounded-xl border border-border/80">
-              <table className="w-full text-left text-xs">
-                <thead className="border-b bg-muted/60 text-muted-foreground">
-                  <tr>
-                    <th className="p-3 font-semibold">Flag</th>
-                    <th className="p-3 font-semibold">Type</th>
-                    <th className="p-3 font-semibold">Description</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/60">
-                  <tr>
-                    <td className="p-3 font-mono text-primary font-medium">-y, --yes</td>
-                    <td className="p-3 text-muted-foreground">boolean</td>
-                    <td className="p-3 text-foreground/90">Skip interactive confirmations and prompt dialogs.</td>
-                  </tr>
-                  <tr>
-                    <td className="p-3 font-mono text-primary font-medium">--wallet &lt;mode&gt;</td>
-                    <td className="p-3 text-muted-foreground">auto | env</td>
-                    <td className="p-3 text-foreground/90">
-                      Choose payment mechanism. <code className="font-mono">env</code> signs using <code className="font-mono">SKILLSBAY_PRIVATE_KEY</code>; <code className="font-mono">auto</code> falls back to browser if not headless.
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="p-3 font-mono text-primary font-medium">-a, --agent</td>
-                    <td className="p-3 text-muted-foreground">string</td>
-                    <td className="p-3 text-foreground/90">Comma-separated target agents (e.g. <code className="font-mono">claude-code,cursor</code>).</td>
-                  </tr>
-                  <tr>
-                    <td className="p-3 font-mono text-primary font-medium">-g, --global</td>
-                    <td className="p-3 text-muted-foreground">boolean</td>
-                    <td className="p-3 text-foreground/90">Installs to user-level home directories instead of project folder.</td>
-                  </tr>
-                  <tr>
-                    <td className="p-3 font-mono text-primary font-medium">-f, --force</td>
-                    <td className="p-3 text-muted-foreground">boolean</td>
-                    <td className="p-3 text-foreground/90">Overwrite existing local skill file if already present.</td>
-                  </tr>
-                </tbody>
-              </table>
+            {/* Flags Reference Table */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Sliders className="size-4 text-primary" />
+                <h3 className="text-base font-semibold text-foreground">CLI Options & Flags Reference</h3>
+              </div>
+              <div className="overflow-x-auto rounded-xl border border-border/80 bg-card shadow-2xs">
+                <table className="w-full text-left text-xs">
+                  <thead className="border-b bg-muted/60 text-muted-foreground">
+                    <tr>
+                      <th className="p-3.5 font-semibold">Flag</th>
+                      <th className="p-3.5 font-semibold">Type</th>
+                      <th className="p-3.5 font-semibold">Description</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/60">
+                    <tr className="hover:bg-muted/30 transition-colors">
+                      <td className="p-3.5 font-mono text-primary font-medium">-y, --yes</td>
+                      <td className="p-3.5 text-muted-foreground font-mono text-[11px]">boolean</td>
+                      <td className="p-3.5 text-foreground/90">Skip interactive confirmations and prompt dialogs. Crucial for autonomous agents.</td>
+                    </tr>
+                    <tr className="hover:bg-muted/30 transition-colors">
+                      <td className="p-3.5 font-mono text-primary font-medium">--wallet &lt;mode&gt;</td>
+                      <td className="p-3.5 text-muted-foreground font-mono text-[11px]">auto | env</td>
+                      <td className="p-3.5 text-foreground/90">
+                        Choose payment mechanism. <code className="font-mono text-foreground bg-muted/60 px-1 py-0.5 rounded">env</code> signs using <code className="font-mono text-foreground bg-muted/60 px-1 py-0.5 rounded">SKILLSBAY_PRIVATE_KEY</code>; <code className="font-mono text-foreground bg-muted/60 px-1 py-0.5 rounded">auto</code> falls back to 1-click browser checkout if not headless.
+                      </td>
+                    </tr>
+                    <tr className="hover:bg-muted/30 transition-colors">
+                      <td className="p-3.5 font-mono text-primary font-medium">-a, --agent &lt;list&gt;</td>
+                      <td className="p-3.5 text-muted-foreground font-mono text-[11px]">string</td>
+                      <td className="p-3.5 text-foreground/90">Comma-separated target agents (e.g. <code className="font-mono text-foreground bg-muted/60 px-1 py-0.5 rounded">claude-code,cursor,antigravity</code>).</td>
+                    </tr>
+                    <tr className="hover:bg-muted/30 transition-colors">
+                      <td className="p-3.5 font-mono text-primary font-medium">-g, --global</td>
+                      <td className="p-3.5 text-muted-foreground font-mono text-[11px]">boolean</td>
+                      <td className="p-3.5 text-foreground/90">Installs to user-level home directories instead of current project folder.</td>
+                    </tr>
+                    <tr className="hover:bg-muted/30 transition-colors">
+                      <td className="p-3.5 font-mono text-primary font-medium">-f, --force</td>
+                      <td className="p-3.5 text-muted-foreground font-mono text-[11px]">boolean</td>
+                      <td className="p-3.5 text-foreground/90">Overwrite existing local skill file if already present.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </section>
 
@@ -609,7 +871,7 @@ npx skillsbay remove substreams-deployer`}
                 </div>
                 <h4 className="text-sm font-semibold text-foreground">Connect with Privy</h4>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Sign in with email, social, or passkeys. Privy automatically deploys an embedded wallet on Base Sepolia.
+                  Sign in with email, social, or passkeys. Privy automatically deploys an embedded wallet for you.
                 </p>
               </div>
 
