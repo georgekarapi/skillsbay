@@ -57,6 +57,12 @@ const baseSepoliaUsdc = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
 const BASE_SEPOLIA_CHAIN_ID = 84532
 const BASE_SEPOLIA_HEX = "0x14a34"
 
+declare global {
+  interface Window {
+    __SKILLSBAY_INITIAL_SKILL__?: Skill
+  }
+}
+
 function parseUsdc(value: string) {
   const [whole, fraction = ""] = value.split(".")
   return BigInt(whole) * 1_000_000n + BigInt((fraction + "000000").slice(0, 6))
@@ -68,6 +74,15 @@ export function SkillDetailPage() {
     queryKey: ["marketplace-skill", username, skillSlug],
     queryFn: () => getMarketplaceSkill(username!, skillSlug!),
     enabled: Boolean(username && skillSlug),
+    // The Worker embeds the public listing in the HTML for this route. This
+    // renders the detail page with real data on first paint, then React Query
+    // keeps it fresh using the normal API request lifecycle.
+    initialData: () => {
+      if (typeof window === "undefined") return undefined
+      const preloaded = window.__SKILLSBAY_INITIAL_SKILL__
+      if (!preloaded || preloaded.namespace !== username || preloaded.slug !== skillSlug) return undefined
+      return preloaded
+    },
   })
   const skill = skillQuery.data
 
@@ -197,7 +212,6 @@ function SkillDetails({ skill }: { skill: Skill }) {
           <CardContent className="grid gap-4">
             <CommandCopy command={command} />
             <BrowserCheckout skill={skill} />
-            <p className="text-center text-xs text-muted-foreground">x402 USDC</p>
           </CardContent>
         </Card>
         <Card size="sm">

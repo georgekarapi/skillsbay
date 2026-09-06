@@ -154,6 +154,21 @@ function injectSkillSeoMeta(html: string, skill: OgSkillData, origin: string): s
   return modified
 }
 
+/**
+ * Give the SPA the same public listing the Worker resolved for this URL. This
+ * avoids a second network round trip and the client-side loading state on the
+ * first render, without exposing a protected bundle or any payment data.
+ */
+function injectSkillBootstrap(html: string, skill: Listing): string {
+  const serializedSkill = JSON.stringify(skill)
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029")
+  return html.replace("</head>", `<script>window.__SKILLSBAY_INITIAL_SKILL__=${serializedSkill}</script>\n  </head>`)
+}
+
 function injectSiteSeoMeta(html: string, origin: string): string {
   const imageUrl = `${origin}/skillsbay-og.png`
   return html
@@ -955,7 +970,8 @@ app.get("/:namespace/:slug", async (c) => {
   const baseHtml = await assetRes.text()
 
   const result = await listings(c.env)
-  const exists = result.data.some((item) => item.namespace === namespace && item.slug === slug)
+  const listing = result.data.find((item) => item.namespace === namespace && item.slug === slug)
+  const exists = Boolean(listing)
   let skillData: OgSkillData | null = null
   if (exists) {
     skillData = await getOgSkillData(c.env, namespace, slug)
@@ -974,7 +990,8 @@ app.get("/:namespace/:slug", async (c) => {
     })
   }
 
-  const injectedHtml = injectSkillSeoMeta(baseHtml, skillData, publicAppOrigin(c.env, c.req.url))
+  const seoHtml = injectSkillSeoMeta(baseHtml, skillData, publicAppOrigin(c.env, c.req.url))
+  const injectedHtml = listing ? injectSkillBootstrap(seoHtml, listing) : seoHtml
 
   return c.html(injectedHtml, 200, {
     "content-type": "text/html; charset=utf-8",
