@@ -28,7 +28,7 @@ unset SKILLSBAY_PRIVATE_KEY
 ```
 
 Skills are installed in the current workspace, preferring
-`.agents/skills/<publisher>/<skill>/SKILL.md` and supporting
+`.agents/skills/<skill>/SKILL.md` and supporting
 `.claude/skills` when selected.
 
 ## GitHub fallback

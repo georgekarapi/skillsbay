@@ -286,7 +286,9 @@ export async function installSkillsbaySkill(
   if (!namespace || !slug) throw new Error('Skill IDs must use namespace/slug');
 
   const canonicalBase = getCanonicalSkillsDir(isGlobal, cwd);
-  const canonicalSkillDir = join(canonicalBase, sanitizeName(namespace), sanitizeName(slug));
+  // Agent skill directories are flat by convention: the marketplace namespace
+  // identifies the publisher, while the skill slug is the local capability name.
+  const canonicalSkillDir = join(canonicalBase, sanitizeName(slug));
   const targetFile = join(canonicalSkillDir, 'SKILL.md');
 
   await mkdir(canonicalSkillDir, { recursive: true });
@@ -317,7 +319,7 @@ export async function installSkillsbaySkill(
     }
 
     const agentBase = getAgentBaseDir(agentType, isGlobal, cwd);
-    const agentSkillDir = join(agentBase, sanitizeName(namespace), sanitizeName(slug));
+    const agentSkillDir = join(agentBase, sanitizeName(slug));
 
     try {
       await mkdir(dirname(agentSkillDir), { recursive: true });
