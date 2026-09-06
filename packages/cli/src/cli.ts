@@ -183,6 +183,7 @@ async function main(): Promise<void> {
           global: addOpts.global,
           agent: addOpts.agent,
           yes: addOpts.yes,
+          force: addOpts.force,
         });
       } else {
         await runAdd(addSource, addOpts);

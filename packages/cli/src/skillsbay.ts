@@ -381,6 +381,55 @@ async function selectInstallationScope(
   return installGlobally;
 }
 
+function existingSkillsbayInstallTargets(
+  skillId: string,
+  targetAgents: AgentType[],
+  options: { global: boolean; cwd?: string }
+): Array<{ path: string; agents: string[] }> {
+  const [, slug] = skillId.split('/');
+  if (!slug) return [];
+
+  const skillDirectory = sanitizeName(slug);
+  const paths = new Map<string, string[]>();
+  const addTarget = (path: string, agentName: string) => {
+    const agentsAtPath = paths.get(path) ?? [];
+    agentsAtPath.push(agentName);
+    paths.set(path, agentsAtPath);
+  };
+
+  for (const agentType of targetAgents) {
+    const agent = agents[agentType];
+    if (!agent) continue;
+    const base = isUniversalAgent(agentType)
+      ? getCanonicalSkillsDir(options.global, options.cwd)
+      : getAgentBaseDir(agentType, options.global, options.cwd);
+    addTarget(join(base, skillDirectory), agent.displayName);
+  }
+
+  return [...paths.entries()]
+    .filter(([path]) => existsSync(path))
+    .map(([path, agentNames]) => ({ path, agents: agentNames }));
+}
+
+async function confirmSkillsbayOverwrite(
+  skillId: string,
+  targetAgents: AgentType[],
+  options: SkillsbayAddOptions & { global: boolean }
+): Promise<boolean> {
+  const existingTargets = existingSkillsbayInstallTargets(skillId, targetAgents, options);
+  if (existingTargets.length === 0) return true;
+
+  const overwriteLines = existingTargets.map(({ path, agents }) =>
+    `${pc.cyan(path)}\n  ${pc.yellow('overwrites:')} ${agents.join(', ')}`
+  );
+  p.note(overwriteLines.join('\n\n'), 'Installation Summary');
+
+  if (options.yes || options.force) return true;
+
+  const confirmed = await p.confirm({ message: 'Proceed and replace the existing skill?' });
+  return !isCancelled(confirmed) && confirmed;
+}
+
 export async function runSkillsbayAdd(skillId: string, options: SkillsbayAddOptions = {}): Promise<void> {
   const spinner = p.spinner();
 
@@ -422,6 +471,15 @@ export async function runSkillsbayAdd(skillId: string, options: SkillsbayAddOpti
 
   const installGlobally = await selectInstallationScope(targetAgents, options);
   if (isCancelled(installGlobally)) {
+    p.cancel('Installation cancelled');
+    return;
+  }
+
+  const overwriteConfirmed = await confirmSkillsbayOverwrite(skillId, targetAgents, {
+    ...options,
+    global: installGlobally,
+  });
+  if (!overwriteConfirmed) {
     p.cancel('Installation cancelled');
     return;
   }
