@@ -66,14 +66,14 @@ sequenceDiagram
 │   ├── index.ts                  # API routes and settlement orchestration
 │   └── storage.ts                # Private bundle storage
 ├── db/migrations/                # Application data schema migrations
-├── shared/                       # Signed publishing and username authorization formats
 ├── packages/
 │   ├── cli/                      # `npx skillsbay add <namespace>/<skill>`
-│   └── contracts/                # Foundry project for SkillRegistry
-│       ├── src/                  # Solidity source and mocks
-│       ├── script/               # Guarded Sepolia and mainnet deployment scripts
-│       └── test/                 # Foundry tests
-├── subgraph/                     # The Graph manifest, schema, mappings, and ABI
+│   ├── contracts/                # Foundry project for SkillRegistry
+│   │   ├── src/                  # Solidity source and mocks
+│   │   ├── script/               # Guarded Sepolia and mainnet deployment scripts
+│   │   └── test/                 # Foundry tests
+│   ├── shared/                   # Shared signed authorization formats
+│   └── subgraph/                 # The Graph manifest, schema, mappings, and ABI
 └── .storybook/                   # Storybook configuration for the UI system
 ```
 

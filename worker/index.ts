@@ -8,7 +8,7 @@ import { privateKeyToAccount } from "viem/accounts"
 import { createBundlerClient, toSimple7702SmartAccount } from "viem/account-abstraction"
 import { baseSepolia } from "viem/chains"
 import { getBundle, putBundle } from "./storage"
-import { createBundleReadAuthorizationMessage, createInstallRequestAuthorizationMessage, createPublishAuthorizationMessage, createUsernameAuthorizationMessage } from "../shared/publish-authorization"
+import { createBundleReadAuthorizationMessage, createInstallRequestAuthorizationMessage, createPublishAuthorizationMessage, createUsernameAuthorizationMessage } from "@skillsbay/shared/publish-authorization"
 import { generateSkillOgPng, generateSkillOgSvg, escapeXml, type OgSkillData } from "./og-image"
 
 type Bindings = {

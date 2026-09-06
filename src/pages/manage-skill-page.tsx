@@ -33,7 +33,7 @@ import { MarketplaceShell } from "@/components/templates/marketplace-shell";
 import {
   createBundleReadAuthorizationMessage,
   createPublishAuthorizationMessage,
-} from "../../shared/publish-authorization";
+} from "@skillsbay/shared/publish-authorization";
 
 const registryAbi = parseAbi([
   "function updateSkill(bytes32 skillId, uint96 price, bool active, string metadataURI)",

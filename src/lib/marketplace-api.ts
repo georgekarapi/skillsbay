@@ -1,8 +1,8 @@
 import type { Skill } from "@/types/marketplace"
-import type { PublishAuthorization } from "../../shared/publish-authorization"
-import type { BundleReadAuthorization } from "../../shared/publish-authorization"
-import type { UsernameAuthorization } from "../../shared/publish-authorization"
-import { createInstallRequestAuthorizationMessage } from "../../shared/publish-authorization"
+import type { PublishAuthorization } from "@skillsbay/shared/publish-authorization"
+import type { BundleReadAuthorization } from "@skillsbay/shared/publish-authorization"
+import type { UsernameAuthorization } from "@skillsbay/shared/publish-authorization"
+import { createInstallRequestAuthorizationMessage } from "@skillsbay/shared/publish-authorization"
 
 export type AuthorDashboardData = {
   totalSales: number

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { checkUsernameAvailability, claimAuthorUsername, getAuthorProfile } from "@/lib/marketplace-api"
-import { createUsernameAuthorizationMessage } from "../../../shared/publish-authorization"
+import { createUsernameAuthorizationMessage } from "@skillsbay/shared/publish-authorization"
 
 const usernamePattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 

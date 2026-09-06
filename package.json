@@ -18,6 +18,7 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
+    "@skillsbay/shared": "workspace:*",
     "@cf-wasm/resvg": "^0.4.0",
     "@fontsource-variable/geist": "^5.3.0",
     "@fontsource-variable/geist-mono": "^5.3.0",

@@ -17,7 +17,7 @@ SkillsBay is a reusable, paid `SKILL.md` distribution layer for AI agents. The d
 The local fallback is intentionally marked **Local demo data** in the UI. It is not hackathon evidence. Before recording, configure and use:
 
 1. A deployed `SkillRegistry` on Base Sepolia and a Base Sepolia USDC address appropriate for x402.
-2. A deployed Subgraph Studio Subgraph with its address substituted in `subgraph/subgraph.yaml`, then its live query URL in `GRAPH_API_URL`.
+2. A deployed Subgraph Studio Subgraph with its address substituted in `packages/subgraph/subgraph.yaml`, then its live query URL in `GRAPH_API_URL`.
 3. A Privy app ID in `VITE_PRIVY_APP_ID`.
 4. The Worker bindings and secrets listed in the [README](./README.md#cloudflare-setup), including a funded recorder account.
 

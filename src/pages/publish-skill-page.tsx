@@ -29,7 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SKILL_CATEGORIES } from "@/types/marketplace";
-import { createPublishAuthorizationMessage } from "../../shared/publish-authorization";
+import { createPublishAuthorizationMessage } from "@skillsbay/shared/publish-authorization";
 
 const registryAbi = parseAbi([
   "function registerSkill(bytes32 skillId, uint96 price, uint32 majorVersion, string metadataURI)",
