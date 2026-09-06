@@ -381,12 +381,21 @@ export async function runSkillsbayAdd(skillId: string, options: SkillsbayAddOpti
       throw err;
     }
   } else {
-    markdown = await completeBrowserCheckout(skillId, (checkoutUrl, expiresDate) => {
-      console.log(
-        `\n  ${pc.dim('No agent wallet is configured. Complete the purchase in your browser:')}\n  ${pc.underline(pc.cyan(checkoutUrl.toString()))}\n  ${pc.dim(`Waiting for payment confirmation until ${expiresDate.toLocaleTimeString()}…`)}\n`
-      );
-    });
-    p.log.success('Payment confirmed!');
+    const paymentSpinner = p.spinner();
+    let isWaitingForPayment = false;
+    try {
+      markdown = await completeBrowserCheckout(skillId, (checkoutUrl) => {
+        console.log(
+          `\n  ${pc.dim('No agent wallet is configured. Complete the purchase in your browser:')}\n  ${pc.underline(pc.cyan(checkoutUrl.toString()))}\n`
+        );
+        isWaitingForPayment = true;
+        paymentSpinner.start('Waiting for payment confirmation…');
+      });
+      if (isWaitingForPayment) paymentSpinner.stop('Payment confirmed');
+    } catch (error) {
+      if (isWaitingForPayment) paymentSpinner.stop('Payment confirmation failed');
+      throw error;
+    }
   }
 
   let targetAgents: AgentType[] = [];
