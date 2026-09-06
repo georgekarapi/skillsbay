@@ -167,7 +167,9 @@ async function main(): Promise<void> {
     case 'install':
     case 'a':
     case 'add': {
-      if (!inAgent) showLogo();
+      // The marketplace command is SkillsBay-branded even when invoked by an
+      // agent terminal. It makes the payment source clear before checkout.
+      showLogo();
       const { source: addSource, options: addOpts, errors } = parseAddOptions(restArgs);
       if (errors.length > 0) {
         for (const error of errors) console.error(`Error: ${error}`);
