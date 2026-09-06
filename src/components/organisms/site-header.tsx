@@ -5,10 +5,14 @@ import { SkillsBayLogo } from "@/components/atoms/skillsbay-logo"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { AuthorAuthControl } from "@/components/molecules/author-auth-control"
+import { useAuthorAuth } from "@/components/providers/author-auth-context"
 
 export function SiteHeader() {
   const [open, setOpen] = useState(false)
   const location = useLocation()
+  const author = useAuthorAuth()
+  const isAuthorRoute =
+    location.pathname.startsWith("/dashboard") || location.pathname.startsWith("/for-authors")
 
   return (
     <header className="sticky top-0 z-20 border-b border-border/80 bg-background/90 backdrop-blur">
@@ -47,12 +51,12 @@ export function SiteHeader() {
             <Link
               to="/dashboard"
               className={`rounded-md px-3 py-1.5 transition-colors ${
-                location.pathname.startsWith("/dashboard")
+                isAuthorRoute
                   ? "font-semibold text-foreground"
                   : "hover:bg-muted hover:text-foreground"
               }`}
             >
-              For authors
+              {author.authenticated ? "Dashboard" : "For authors"}
             </Link>
           </nav>
           <div className="h-4 w-px bg-border" aria-hidden="true" />
@@ -101,12 +105,12 @@ export function SiteHeader() {
                   to="/dashboard"
                   onClick={() => setOpen(false)}
                   className={`rounded-lg px-3 py-2 transition-colors ${
-                    location.pathname === "/dashboard"
+                    isAuthorRoute && location.pathname !== "/dashboard/skills/new"
                       ? "bg-muted font-semibold text-foreground"
                       : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                   }`}
                 >
-                  For authors
+                  {author.authenticated ? "Dashboard" : "For authors"}
                 </Link>
                 <Link
                   to="/dashboard/skills/new"

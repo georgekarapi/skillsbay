@@ -22,7 +22,9 @@ function App() {
           <Route path="/" element={<MarketplacePage />} />
           <Route path="/docs" element={<DocsPage />} />
           <Route path="/skills/:namespace/:slug" element={<LegacySkillRedirect />} />
+          <Route path="/for-authors" element={<DashboardPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/publish" element={<Navigate replace to="/dashboard/skills/new" />} />
           <Route path="/dashboard/skills/new" element={<PublishSkillPage />} />
           <Route path="/dashboard/skills/:namespace/:slug" element={<ManageSkillPage />} />
           <Route path="/:username/:skillSlug" element={<SkillDetailPage />} />

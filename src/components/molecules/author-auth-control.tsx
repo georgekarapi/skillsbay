@@ -1,4 +1,4 @@
-import { Check, LayoutDashboard, LogIn, LogOut, Plus, Wallet } from "lucide-react"
+import { Check, LayoutDashboard, LogOut, Plus, Wallet } from "lucide-react"
 import { Link } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { toast } from "sonner"
@@ -16,10 +16,10 @@ export function AuthorAuthControl() {
     enabled: Boolean(author.authenticated && author.walletAddress),
   })
 
-  if (!author.configured) return <Button asChild size="sm"><Link to="/dashboard">Get started</Link></Button>
-  if (!author.ready) return <Button size="sm" disabled>Loading account</Button>
-  if (!author.authenticated) return <Button size="sm" onClick={author.login}><LogIn /> Get started</Button>
-  if (!author.walletAddress) return <Button size="sm" disabled><Wallet /> Creating wallet…</Button>
+  if (!author.configured) return <Button asChild className="h-9 rounded-full px-4 text-xs font-medium"><Link to="/dashboard">Get started</Link></Button>
+  if (!author.ready) return <Button className="h-9 rounded-full px-4 text-xs font-medium" disabled>Loading account</Button>
+  if (!author.authenticated) return <Button className="h-9 rounded-full px-4 text-xs font-medium" onClick={author.login}>Get started</Button>
+  if (!author.walletAddress) return <Button className="h-9 rounded-full px-4 text-xs font-medium" disabled><Wallet className="size-3.5" /> Creating wallet…</Button>
 
   const wallet = author.walletAddress
   const walletLabel = `${wallet.slice(0, 6)}…${wallet.slice(-4)}`

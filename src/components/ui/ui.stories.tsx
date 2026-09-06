@@ -24,7 +24,7 @@ const meta = { title: "Primitives/shadcn", component: Button, parameters: { layo
 export default meta
 type Story = StoryObj<typeof meta>
 
-export const ButtonPreview: Story = { args: { children: "Connect wallet" } }
+export const ButtonPreview: Story = { args: { children: "Get started" } }
 export const InputPreview: Story = { render: () => <Input className="w-72" placeholder="Search skills..." /> }
 export const TextareaPreview: Story = { render: () => <Textarea className="w-72" placeholder="A concise skill summary" /> }
 export const SelectPreview: Story = { render: () => <Select><SelectTrigger className="w-48"><SelectValue placeholder="Choose category" /></SelectTrigger><SelectContent><SelectItem value="graph">The Graph</SelectItem><SelectItem value="defi">DeFi</SelectItem></SelectContent></Select> }

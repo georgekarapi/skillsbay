@@ -79,6 +79,18 @@
 html { font-family: var(--font-sans); background: var(--background); }
 body { @apply m-0 min-h-screen bg-background text-foreground antialiased; }
 button, input, textarea, select { font: inherit; }
+button,
+[role="button"],
+[type="button"],
+[type="submit"],
+[type="reset"] {
+  cursor: pointer;
+}
+button:disabled,
+[role="button"]:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+}
 input[type="checkbox"], input[type="radio"] { accent-color: var(--primary); }
 ::selection { background: color-mix(in oklch, var(--primary) 20%, transparent); }
 

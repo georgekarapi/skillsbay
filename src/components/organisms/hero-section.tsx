@@ -246,14 +246,14 @@ export const HeroSection = memo(function HeroSection() {
 
           {/* Actions Row */}
           <div className="mt-6 flex flex-wrap items-center gap-3">
-            <Button asChild size="default" className="gap-2 px-4 shadow-xs">
+            <Button asChild className="h-10 gap-2 px-5 text-sm font-medium shadow-xs">
               <a href="#marketplace" onClick={scrollToMarketplace}>
                 Explore Skills
                 <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
               </a>
             </Button>
 
-            <Button asChild variant="outline" size="default" className="px-4">
+            <Button asChild variant="outline" className="h-10 px-4 text-sm font-medium">
               <Link to="/dashboard/skills/new">
                 Publish a skill
               </Link>
