@@ -68,6 +68,9 @@ jobs:
     if: github.event_name == 'push' && contains(join(github.event.commits.*.modified, ' '), 'packages/cli/') || contains(join(github.event.commits.*.added, ' '), 'packages/cli/') || contains(join(github.event.commits.*.removed, ' '), 'packages/cli/')
     runs-on: ubuntu-latest
     environment: npm
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
       - name: Check out source
@@ -81,7 +84,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
           registry-url: https://registry.npmjs.org
 
@@ -103,5 +106,3 @@ jobs:
       - name: Publish CLI
         working-directory: packages/cli
         run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
