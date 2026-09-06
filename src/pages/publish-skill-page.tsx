@@ -21,6 +21,14 @@ import {
   publishBundle,
 } from "@/lib/marketplace-api";
 import { MarketplaceShell } from "@/components/templates/marketplace-shell";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { SKILL_CATEGORIES } from "@/types/marketplace";
 import { createPublishAuthorizationMessage } from "../../shared/publish-authorization";
 
 const registryAbi = parseAbi([
@@ -60,6 +68,7 @@ export function PublishSkillPage() {
   const navigate = useNavigate();
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState("15.00");
+  const [category, setCategory] = useState<string>("Agent tooling");
   const [markdown, setMarkdown] = useState(initialMarkdown);
   const [publishing, setPublishing] = useState(false);
   const registryAddress = import.meta.env.VITE_SKILL_REGISTRY_ADDRESS as
@@ -151,6 +160,7 @@ export function PublishSkillPage() {
           issuedAt,
           markdown: input.markdown,
           signature,
+          category,
         });
         return;
       } catch (error) {
@@ -296,20 +306,40 @@ export function PublishSkillPage() {
                   allowed.
                 </span>
               </label>
-              <label className="grid gap-2 text-sm font-medium">
-                Price (USDC)
-                <Input
-                  value={price}
-                  onChange={(event) => setPrice(event.target.value)}
-                  inputMode="decimal"
-                  min="0.20"
-                  step="0.01"
-                  required
-                />
-                <span className="text-xs font-normal text-muted-foreground">
-                  Minimum $0.20
-                </span>
-              </label>
+              <div className="grid gap-5 sm:grid-cols-2">
+                <label className="grid gap-2 text-sm font-medium">
+                  Price (USDC)
+                  <Input
+                    value={price}
+                    onChange={(event) => setPrice(event.target.value)}
+                    inputMode="decimal"
+                    min="0.20"
+                    step="0.01"
+                    required
+                  />
+                  <span className="text-xs font-normal text-muted-foreground">
+                    Minimum $0.20
+                  </span>
+                </label>
+                <label className="grid gap-2 text-sm font-medium">
+                  Category
+                  <Select value={category} onValueChange={setCategory}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select a category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SKILL_CATEGORIES.map((cat) => (
+                        <SelectItem key={cat} value={cat}>
+                          {cat}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <span className="text-xs font-normal text-muted-foreground">
+                    Appears in discovery &amp; social cards
+                  </span>
+                </label>
+              </div>
               <label className="grid gap-2 text-sm font-medium">
                 SKILL.md
                 <Textarea

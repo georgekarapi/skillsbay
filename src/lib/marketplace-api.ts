@@ -77,7 +77,7 @@ export class MarketplaceApiError extends Error {
   }
 }
 
-export async function publishBundle(input: PublishAuthorization & { markdown: string; signature: string }) {
+export async function publishBundle(input: PublishAuthorization & { markdown: string; signature: string; category?: string }) {
   const response = await fetch(endpoint(`/v1/publish/bundles/${input.skillId}`), {
     method: "POST",
     headers: { "content-type": "application/json" },

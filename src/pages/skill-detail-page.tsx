@@ -23,10 +23,41 @@ function parseUsdc(value: string) {
   return BigInt(whole) * 1_000_000n + BigInt((fraction + "000000").slice(0, 6))
 }
 
+import { usePageSeo } from "@/hooks/use-page-seo"
+
 export function SkillDetailPage() {
   const { username, skillSlug } = useParams()
   const skillQuery = useQuery({ queryKey: ["marketplace-skill", username, skillSlug], queryFn: () => getMarketplaceSkill(username!, skillSlug!), enabled: Boolean(username && skillSlug) })
   const skill = skillQuery.data
+
+  usePageSeo({
+    title: skill ? `${skill.title} by ${skill.author} (${skill.namespace}/${skill.slug}) – SkillsBay` : "Loading skill… – SkillsBay",
+    description: skill ? skill.summary : "A verified agent skill on SkillsBay.",
+    canonical: skill ? `/${skill.namespace}/${skill.slug}` : undefined,
+    ogType: "article",
+    ogImage: skill ? `/v1/skills/${skill.namespace}/${skill.slug}/og.png` : undefined,
+    productPrice: skill ? skill.priceUsdc : undefined,
+    jsonLd: skill ? {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: skill.title,
+      description: skill.summary,
+      applicationCategory: skill.category,
+      operatingSystem: "AI Agent Workflows",
+      offers: {
+        "@type": "Offer",
+        price: skill.priceUsdc,
+        priceCurrency: "USD",
+        availability: "https://schema.org/InStock",
+      },
+      author: {
+        "@type": "Person",
+        name: skill.author,
+      },
+      softwareVersion: skill.version,
+    } : undefined,
+  })
+
   return <MarketplaceShell>
     <Link className="mb-7 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground" to="/"><ArrowLeft className="size-4" /> All skills</Link>
     {skillQuery.isLoading ? <div className="py-20 text-center text-sm text-muted-foreground">Loading skill from the live registry…</div> : skillQuery.isError ? <div className="py-20 text-center text-sm text-muted-foreground">The live skill registry could not be reached. Please try again.</div> : !skill ? <div className="py-20 text-center text-sm text-muted-foreground">This skill has not been registered or is no longer active.</div> : <SkillDetails skill={skill} />}

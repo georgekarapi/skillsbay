@@ -1,3 +1,19 @@
+export const SKILL_CATEGORIES = [
+  "Agent tooling",
+  "Automation",
+  "DeFi",
+  "Development",
+  "Research",
+  "Security",
+  "The Graph",
+  "Data & Analytics",
+  "Web3",
+  "Productivity",
+  "Other",
+] as const
+
+export type SkillCategory = typeof SKILL_CATEGORIES[number]
+
 export type Skill = {
   id: string
   rank: number

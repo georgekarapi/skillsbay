@@ -9,6 +9,7 @@ import { createBundlerClient, toSimple7702SmartAccount } from "viem/account-abst
 import { baseSepolia } from "viem/chains"
 import { getBundle, putBundle } from "./storage"
 import { createBundleReadAuthorizationMessage, createInstallRequestAuthorizationMessage, createPublishAuthorizationMessage, createUsernameAuthorizationMessage } from "../shared/publish-authorization"
+import { generateSkillOgPng, generateSkillOgSvg, escapeXml, type OgSkillData } from "./og-image"
 
 type Bindings = {
   APP_ENV: string
@@ -25,6 +26,7 @@ type Bindings = {
   CIRCLE_PAYMASTER_ADDRESS?: string
   CIRCLE_PAYMASTER_PERMIT_USDC?: string
   USDC_ADDRESS?: string
+  ASSETS?: { fetch: typeof fetch }
 }
 
 type Listing = { id: string; namespace: string; slug: string; title: string; summary: string; category: string; priceUsdc: string; paidInstalls: number; trend: number; author: string; authorAddress: string; version: string; updatedAt: string }
@@ -47,7 +49,12 @@ type SkillDbRow = {
 }
 
 const app = new Hono<{ Bindings: Bindings }>()
-app.use("/v1/*", cors({ origin: "*", allowHeaders: ["Content-Type", "Authorization", "PAYMENT-SIGNATURE"], allowMethods: ["GET", "POST", "PUT", "OPTIONS"] }))
+app.use("/v1/*", cors({
+  origin: "*",
+  allowHeaders: ["Content-Type", "Authorization", "PAYMENT-SIGNATURE", "PAYMENT-REQUIRED", "payment-signature", "payment-required"],
+  exposeHeaders: ["PAYMENT-REQUIRED", "PAYMENT-RESPONSE", "payment-required", "payment-response"],
+  allowMethods: ["GET", "POST", "PUT", "OPTIONS"],
+}))
 
 function splitSkillId(skillId: string) {
   const [namespace, slug] = skillId.split("/")
@@ -65,6 +72,129 @@ function isWalletAddress(value: string) {
 
 function isUsername(value: string) {
   return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value) && value.length >= 3 && value.length <= 32
+}
+
+const RESERVED_NAMESPACES = new Set([
+  "v1", "api", "dashboard", "for-authors", "docs", "publish", "assets", "skills",
+  "favicon.ico", "favicon.svg", "skillsbay-og.png", "skillsbay-logo.svg", "skillsbay-logo-dark.svg", "skillsbay-mark.png", "skillsbay-favicon.png", "icons.svg"
+])
+
+function parseSkillFrontmatter(markdown?: string): { title?: string; description?: string } {
+  if (!markdown || !markdown.startsWith("---")) return {}
+  const end = markdown.indexOf("\n---", 3)
+  if (end === -1) return {}
+  const frontmatter = markdown.slice(3, end)
+  const result: { title?: string; description?: string } = {}
+  for (const line of frontmatter.split("\n")) {
+    const trimmed = line.trim()
+    if (trimmed.startsWith("title:")) {
+      result.title = trimmed.slice(6).trim().replace(/^["']|["']$/g, "")
+    } else if (trimmed.startsWith("description:")) {
+      result.description = trimmed.slice(12).trim().replace(/^["']|["']$/g, "")
+    } else if (trimmed.startsWith("summary:")) {
+      result.description = trimmed.slice(8).trim().replace(/^["']|["']$/g, "")
+    }
+  }
+  return result
+}
+
+function injectSkillSeoMeta(html: string, skill: OgSkillData, origin: string): string {
+  const title = `${skill.title} by @${skill.namespace} — SkillsBay`
+  const description = skill.summary || "Discover, buy, and run verified AI agent skills on SkillsBay."
+  const url = `${origin}/${skill.namespace}/${skill.slug}`
+  const ogImageUrl = `${origin}/v1/skills/${skill.namespace}/${skill.slug}/og.png`
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": skill.title,
+    "description": description,
+    "applicationCategory": skill.category,
+    "operatingSystem": "Agentic AI / LLM Tooling",
+    "offers": {
+      "@type": "Offer",
+      "price": skill.priceUsdc,
+      "priceCurrency": "USDC",
+    },
+    "author": {
+      "@type": "Person",
+      "name": skill.namespace,
+    },
+  }
+
+  let modified = html
+    .replace(/<title>.*?<\/title>/s, `<title>${escapeXml(title)}</title>`)
+    .replace(/<meta name="description" content=".*?" \/>/s, `<meta name="description" content="${escapeXml(description)}" />`)
+    .replace(/<link rel="canonical" href=".*?" \/>/s, `<link rel="canonical" href="${escapeXml(url)}" />`)
+    .replace(/<meta property="og:type" content=".*?" \/>/s, `<meta property="og:type" content="article" />`)
+    .replace(/<meta property="og:url" content=".*?" \/>/s, `<meta property="og:url" content="${escapeXml(url)}" />`)
+    .replace(/<meta property="og:title" content=".*?" \/>/s, `<meta property="og:title" content="${escapeXml(title)}" />`)
+    .replace(/<meta property="og:description" content=".*?" \/>/s, `<meta property="og:description" content="${escapeXml(description)}" />`)
+    .replace(/<meta property="og:image" content=".*?" \/>/s, `<meta property="og:image" content="${escapeXml(ogImageUrl)}" />`)
+    .replace(/<meta property="og:image:alt" content=".*?" \/>/s, `<meta property="og:image:alt" content="${escapeXml(title)}" />`)
+    .replace(/<meta name="twitter:title" content=".*?" \/>/s, `<meta name="twitter:title" content="${escapeXml(title)}" />`)
+    .replace(/<meta name="twitter:description" content=".*?" \/>/s, `<meta name="twitter:description" content="${escapeXml(description)}" />`)
+    .replace(/<meta name="twitter:image" content=".*?" \/>/s, `<meta name="twitter:image" content="${escapeXml(ogImageUrl)}" />`)
+
+  const jsonLdTag = `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>\n  </head>`
+  modified = modified.replace("</head>", jsonLdTag)
+
+  return modified
+}
+
+async function getOgSkillData(env: Bindings, namespace: string, slug: string): Promise<OgSkillData> {
+  const result = await listings(env)
+  const skill = result.data.find((item) => item.namespace === namespace && item.slug === slug)
+  if (skill) {
+    return {
+      namespace: skill.namespace,
+      slug: skill.slug,
+      title: skill.title,
+      summary: skill.summary,
+      category: skill.category || "Agent skill",
+      priceUsdc: skill.priceUsdc || "0.25",
+      paidInstalls: skill.paidInstalls || 0,
+      version: skill.version || "1.0.0",
+    }
+  }
+
+  try {
+    const row = await env.DB.prepare(
+      "SELECT namespace, slug, title, summary, category, price_usdc, paid_installs, version FROM skills WHERE namespace = ? AND slug = ?"
+    ).bind(namespace, slug).first<{
+      namespace: string
+      slug: string
+      title: string
+      summary: string
+      category: string
+      price_usdc: string
+      paid_installs: number
+      version: string
+    }>()
+    if (row) {
+      return {
+        namespace: row.namespace,
+        slug: row.slug,
+        title: row.title,
+        summary: row.summary,
+        category: row.category || "Agent skill",
+        priceUsdc: row.price_usdc || "0.25",
+        paidInstalls: row.paid_installs || 0,
+        version: row.version || "1.0.0",
+      }
+    }
+  } catch {}
+
+  return {
+    namespace,
+    slug,
+    title: slug.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" "),
+    summary: "Discover and run verified AI agent skills on SkillsBay.",
+    category: "Agent skill",
+    priceUsdc: "0.25",
+    paidInstalls: 0,
+    version: "1.0.0",
+  }
 }
 
 async function graphListings(env: Bindings): Promise<Listing[] | null> {
@@ -255,7 +385,39 @@ async function recordPurchase(env: Bindings, input: { skillId: string; buyer: st
   await bundler.waitForUserOperationReceipt({ hash: userOperationHash })
 }
 
-app.get("/v1/health", (c) => c.json({ ok: true, environment: c.env.APP_ENV, services: { graph: Boolean(c.env.GRAPH_API_URL), privateBundles: true, x402: Boolean(c.env.X402_RECIPIENT_ADDRESS), circlePaymaster: Boolean(c.env.RECORDER_PRIVATE_KEY) } }))
+app.get("/v1/health", (c) => c.json({ ok: true, environment: c.env.APP_ENV, services: { graph: Boolean(c.env.GRAPH_API_URL), privateBundles: true, x402: Boolean(c.env.X402_RECIPIENT_ADDRESS), circlePaymaster: Boolean(c.env.RECORDER_PRIVATE_KEY), hasAssets: Boolean(c.env.ASSETS) } }))
+app.get("/v1/skills/:namespace/:slug/og.png", async (c) => {
+  const namespace = c.req.param("namespace")
+  const slug = c.req.param("slug")
+  const skillData = await getOgSkillData(c.env, namespace, slug)
+  try {
+    const pngBytes = await generateSkillOgPng(skillData)
+    return new Response(pngBytes.buffer as ArrayBuffer, {
+      status: 200,
+      headers: {
+        "content-type": "image/png",
+        "cache-control": "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800",
+      },
+    })
+  } catch (error) {
+    console.error("Failed to generate OG PNG", error)
+    return c.text("Failed to generate OG image", 500)
+  }
+})
+
+app.get("/v1/skills/:namespace/:slug/og.svg", async (c) => {
+  const namespace = c.req.param("namespace")
+  const slug = c.req.param("slug")
+  const skillData = await getOgSkillData(c.env, namespace, slug)
+  const svg = generateSkillOgSvg(skillData)
+  return new Response(svg, {
+    status: 200,
+    headers: {
+      "content-type": "image/svg+xml; charset=utf-8",
+      "cache-control": "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800",
+    },
+  })
+})
 app.get("/v1/skills", async (c) => {
   const query = c.req.query("query")?.toLowerCase()
   const result = await listings(c.env)
@@ -500,11 +662,20 @@ app.get("/v1/install/:namespace/:slug/content", async (c) => {
   if (!c.env.X402_RECIPIENT_ADDRESS || !c.env.SKILL_REGISTRY_ADDRESS || !c.env.RECORDER_PRIVATE_KEY || !c.env.BASE_SEPOLIA_RPC_URL) return c.json({ error: "x402 checkout is not configured", code: "X402_NOT_CONFIGURED" }, 503)
   if (c.env.X402_RECIPIENT_ADDRESS.toLowerCase() !== c.env.SKILL_REGISTRY_ADDRESS.toLowerCase()) return c.json({ error: "x402 recipient must be the SkillRegistry", code: "X402_RECIPIENT_MISMATCH" }, 503)
   const markdown = await getBundle({ db: c.env.DB, bucket: c.env.SKILL_BUNDLES, skillId })
-  if (!markdown) return c.json({ error: "Bundle not found" }, 404)
+  const bundleContent = markdown || `# ${skill.title}\n\n${skill.summary}\n\n## Instructions\n\nRun with: npx skillsbay add ${skill.namespace}/${skill.slug}\n`
   const resourceServer = new x402ResourceServer(new HTTPFacilitatorClient({ url: "https://x402.org/facilitator" })).register("eip155:84532", new ExactEvmScheme())
+  await resourceServer.initialize()
   resourceServer.onAfterSettle(async ({ result, requirements }) => {
     if (!result.success || !result.payer || !result.amount) throw new Error("x402 settlement did not return a complete purchase receipt")
     await recordPurchase(c.env, { skillId, buyer: result.payer, amount: result.amount ?? requirements.amount, paymentTransactionHash: result.transaction })
+    const installRequestId = c.req.query("installRequestId")
+    if (installRequestId && installRequestId !== "1") {
+      try {
+        await c.env.DB.prepare("UPDATE install_requests SET status = 'completed', buyer_address = ?, payment_transaction_hash = ? WHERE id = ?").bind(result.payer.toLowerCase(), result.transaction, installRequestId).run()
+      } catch (err) {
+        console.error("Failed to complete install request after x402 settlement", err)
+      }
+    }
   })
   const gate = paymentMiddleware(
     { "GET /v1/install/:namespace/:slug/content": { accepts: { scheme: "exact", network: "eip155:84532", price: `$${skill.priceUsdc}`, payTo: c.env.X402_RECIPIENT_ADDRESS } } },
@@ -513,8 +684,10 @@ app.get("/v1/install/:namespace/:slug/content", async (c) => {
     undefined,
     false,
   )
-  await gate(c, async () => { c.res = c.text(markdown, 200, { "content-type": "text/markdown; charset=utf-8", "cache-control": "no-store" }) })
-  return c.res
+  const gateResponse = await gate(c, async () => {
+    c.res = c.text(bundleContent, 200, { "content-type": "text/markdown; charset=utf-8", "cache-control": "no-store" })
+  })
+  return gateResponse || c.res
 })
 app.put("/v1/internal/bundles/:namespace/:slug", async (c) => {
   if (!isInternalPublisher(c.req.raw, c.env)) return c.json({ error: "Unauthorized" }, 401)
@@ -550,7 +723,8 @@ app.post("/v1/publish/bundles/:namespace/:slug/read", async (c) => {
 app.post("/v1/publish/bundles/:namespace/:slug", async (c) => {
   const skillId = skillIdFromParams(c.req)
   if (!splitSkillId(skillId)) return c.json({ error: "Invalid skill ID" }, 400)
-  const payload = await c.req.json<{ markdown?: string; author?: string; issuedAt?: string; signature?: string }>().catch(() => ({}))
+  type PublishPayload = { markdown?: string; author?: string; issuedAt?: string; signature?: string; category?: string }
+  const payload = await c.req.json<PublishPayload>().catch((): PublishPayload => ({}))
   if (!payload.markdown?.startsWith("---")) return c.json({ error: "A single frontmatter-based SKILL.md bundle is required" }, 400)
   if (!payload.author || !/^0x[0-9a-fA-F]{40}$/.test(payload.author) || !payload.signature || !payload.issuedAt) return c.json({ error: "A signed author wallet is required" }, 401)
   const issuedAt = Date.parse(payload.issuedAt)
@@ -581,13 +755,20 @@ app.post("/v1/publish/bundles/:namespace/:slug", async (c) => {
   const stored = await putBundle({ db: c.env.DB, bucket: c.env.SKILL_BUNDLES, skillId, markdown: payload.markdown })
   const split = splitSkillId(skillId)
   if (split) {
-    const title = split.slug.split("-").map((word) => word[0].toUpperCase() + word.slice(1)).join(" ")
+    const frontmatter = parseSkillFrontmatter(payload.markdown)
+    const title = frontmatter.title || split.slug.split("-").map((word) => word[0].toUpperCase() + word.slice(1)).join(" ")
+    const summary = frontmatter.description || "A published skill on SkillsBay."
+    const category = payload.category || "Agent skill"
     try {
       await c.env.DB.prepare(`
         INSERT INTO skills (id, namespace, slug, title, summary, category, price_usdc, paid_installs, trend, author, author_address, version, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        ON CONFLICT(id) DO UPDATE SET updated_at = CURRENT_TIMESTAMP
-      `).bind(skillId, split.namespace, split.slug, title, "A published skill on SkillsBay.", "Agent skill", "0.25", 0, 0, split.namespace, author, "1.0.0").run()
+        ON CONFLICT(id) DO UPDATE SET
+          title = excluded.title,
+          summary = excluded.summary,
+          category = excluded.category,
+          updated_at = CURRENT_TIMESTAMP
+      `).bind(skillId, split.namespace, split.slug, title, summary, category, "0.25", 0, 0, split.namespace, author, "1.0.0").run()
     } catch (error) {
       console.error("Failed to upsert skill to D1", error)
     }
@@ -715,6 +896,58 @@ app.get("/v1/skills-sh", async (c) => {
     updatedAt: "skills.sh",
   }))
   return c.json({ data, source: "skills.sh" as const })
+})
+
+app.get("/skills/:namespace/:slug", (c) => {
+  return c.redirect(`/${c.req.param("namespace")}/${c.req.param("slug")}`, 301)
+})
+
+app.get("/:namespace/:slug", async (c) => {
+  const namespace = c.req.param("namespace")
+  const slug = c.req.param("slug")
+
+  // Pass through reserved or system routes, or requests with file extensions, to ASSETS
+  if (RESERVED_NAMESPACES.has(namespace) || slug.includes(".")) {
+    if (c.env.ASSETS) return c.env.ASSETS.fetch(c.req.raw)
+    return c.notFound()
+  }
+
+  if (!c.env.ASSETS) {
+    return c.notFound()
+  }
+
+  const assetRes = await c.env.ASSETS.fetch(new Request(new URL("/", c.req.url)))
+  if (!assetRes.ok) return assetRes
+  const baseHtml = await assetRes.text()
+
+  const result = await listings(c.env)
+  const exists = result.data.some((item) => item.namespace === namespace && item.slug === slug)
+  let skillData: OgSkillData | null = null
+  if (exists) {
+    skillData = await getOgSkillData(c.env, namespace, slug)
+  } else {
+    try {
+      const row = await c.env.DB.prepare("SELECT 1 FROM skills WHERE namespace = ? AND slug = ?").bind(namespace, slug).first()
+      if (row) {
+        skillData = await getOgSkillData(c.env, namespace, slug)
+      }
+    } catch {}
+  }
+
+  if (!skillData) {
+    return c.html(baseHtml, 200, {
+      "content-type": "text/html; charset=utf-8",
+    })
+  }
+
+  const reqOrigin = new URL(c.req.url).origin
+  const origin = reqOrigin.includes("localhost") || reqOrigin.includes("127.0.0.1") ? reqOrigin : "https://skillsbay.org"
+  const injectedHtml = injectSkillSeoMeta(baseHtml, skillData, origin)
+
+  return c.html(injectedHtml, 200, {
+    "content-type": "text/html; charset=utf-8",
+    "cache-control": "public, max-age=0, must-revalidate",
+  })
 })
 
 export default app

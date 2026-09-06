@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { usePageSeo } from "@/hooks/use-page-seo"
 import { HeroSection } from "@/components/organisms/hero-section"
 import { SkillLeaderboard, type SkillTab } from "@/components/organisms/skill-leaderboard"
 import { MarketplaceShell } from "@/components/templates/marketplace-shell"
@@ -51,6 +52,13 @@ function AnimatedWord({ word }: { word: string }) {
 
 export function MarketplacePage() {
   const [tab, setTab] = useState<SkillTab>("trending")
+
+  usePageSeo({
+    title: "SkillsBay — The Agent Skill Marketplace",
+    description: "Discover, buy, and publish verified skills for AI agents. Run autonomous workflows with x402-enabled payments and instant CLI installation.",
+    canonical: "/",
+    ogType: "website",
+  })
 
   return (
     <MarketplaceShell>
