@@ -20,6 +20,9 @@ jobs:
     environment: production
     permissions:
       contents: read
+    env:
+      VITE_PRIVY_APP_ID: ${{ vars.VITE_PRIVY_APP_ID }}
+      VITE_SKILL_REGISTRY_ADDRESS: ${{ vars.VITE_SKILL_REGISTRY_ADDRESS }}
 
     steps:
       - name: Check out source
@@ -38,6 +41,11 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Validate public build configuration
+        run: |
+          test -n "$VITE_PRIVY_APP_ID" || { echo "Set production variable VITE_PRIVY_APP_ID"; exit 1; }
+          test -n "$VITE_SKILL_REGISTRY_ADDRESS" || { echo "Set production variable VITE_SKILL_REGISTRY_ADDRESS"; exit 1; }
 
       - name: Build Worker and marketplace
         run: pnpm build
