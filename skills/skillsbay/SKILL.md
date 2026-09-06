@@ -21,7 +21,7 @@ For the current deployment, set the API origin in the shell that
 runs the CLI:
 
 ```bash
-export SKILLSBAY_API_URL=https://skillsbay.karapi.workers.dev
+export SKILLSBAY_API_URL=https://skillsbay.dev
 ```
 
 Check service readiness without buying anything:

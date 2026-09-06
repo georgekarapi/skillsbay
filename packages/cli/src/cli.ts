@@ -77,7 +77,7 @@ function showBanner(): void {
   console.log();
   console.log(`${DIM}try:${RESET} npx skillsbay add karapi/skillsbay`);
   console.log();
-  console.log(`Explore skills at ${TEXT}https://skillsbay.karapi.workers.dev${RESET}`);
+  console.log(`Explore skills at ${TEXT}https://skillsbay.dev${RESET}`);
   console.log();
 }
 

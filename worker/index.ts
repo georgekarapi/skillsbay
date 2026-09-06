@@ -941,7 +941,7 @@ app.get("/:namespace/:slug", async (c) => {
   }
 
   const reqOrigin = new URL(c.req.url).origin
-  const origin = reqOrigin.includes("localhost") || reqOrigin.includes("127.0.0.1") ? reqOrigin : "https://skillsbay.org"
+  const origin = reqOrigin.includes("localhost") || reqOrigin.includes("127.0.0.1") ? reqOrigin : "https://skillsbay.dev"
   const injectedHtml = injectSkillSeoMeta(baseHtml, skillData, origin)
 
   return c.html(injectedHtml, 200, {

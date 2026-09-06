@@ -212,6 +212,8 @@ pnpm run deploy:worker
 
 Merges to `main` run [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml): it builds the marketplace, applies pending remote D1 migrations, then deploys the Worker. Configure the `production` GitHub environment with `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
 
+The Worker is bound to `skillsbay.dev` as a Wrangler custom domain. Before the first production deployment, add and activate the `skillsbay.dev` zone in that same Cloudflare account.
+
 When a merge changes `packages/cli`, the same workflow builds and publishes the `skillsbay` npm package. Bump `packages/cli/package.json` first; npm versions are immutable. Configure the `npm` GitHub environment with an `NPM_TOKEN` that can publish the `skillsbay` package.
 
 Keep deployment credentials and service secrets out of source control. Public application settings should be limited to values that are safe to expose in the browser or client configuration.

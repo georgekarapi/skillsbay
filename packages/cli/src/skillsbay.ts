@@ -23,7 +23,7 @@ import type { AgentType } from './types.ts';
 
 const isCancelled = (value: unknown): value is symbol => typeof value === 'symbol';
 
-export const apiUrl = process.env.SKILLSBAY_API_URL ?? 'https://skillsbay.karapi.workers.dev';
+export const apiUrl = process.env.SKILLSBAY_API_URL ?? 'https://skillsbay.dev';
 
 export function endpoint(path: string): string {
   return new URL(path, apiUrl).toString();
@@ -60,7 +60,7 @@ export async function resolveSkillsbaySkillId(source: string): Promise<string | 
   if (raw.startsWith('http://') || raw.startsWith('https://')) {
     try {
       const url = new URL(raw);
-      if (url.hostname.includes('skillsbay') || url.hostname.includes('karapi.workers.dev')) {
+      if (url.hostname === 'skillsbay.dev' || url.hostname.endsWith('.skillsbay.dev')) {
         const parts = url.pathname.split('/').filter(Boolean);
         if (parts.length >= 2) {
           return `${parts[0]}/${parts[1]}`;
