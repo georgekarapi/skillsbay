@@ -242,6 +242,7 @@ function BrowserCheckout({ skill }: { skill: Skill }) {
   const [params, setParams] = useSearchParams()
   const installRequestId = params.get("checkout")
   const [open, setOpen] = useState(Boolean(installRequestId))
+  const [resumePrivyCheckout, setResumePrivyCheckout] = useState(false)
 
   // Selected checkout method: null shows stacked connect buttons, "x402" or "privy" shows active flow
   const [selectedMethod, setSelectedMethod] = useState<"x402" | "privy" | null>(null)
@@ -264,6 +265,26 @@ function BrowserCheckout({ skill }: { skill: Skill }) {
   const [pendingTransactionHash, setPendingTransactionHash] = useState<string | null>(() =>
     sessionStorage.getItem(pendingPaymentKey)
   )
+
+  // Radix Dialog makes outside content inert while it is open. Privy's login
+  // portal lives outside this checkout dialog, so close the checkout first or
+  // the visible Privy modal cannot receive pointer/focus events.
+  function startPrivyLogin() {
+    setSelectedMethod("privy")
+    setResumePrivyCheckout(true)
+    setOpen(false)
+    window.setTimeout(() => author.login(), 0)
+  }
+
+  useEffect(() => {
+    if (!resumePrivyCheckout || !author.authenticated) return
+    const timer = window.setTimeout(() => {
+      setOpen(true)
+      setSelectedMethod("privy")
+      setResumePrivyCheckout(false)
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [author.authenticated, resumePrivyCheckout])
 
   // Detect and listen to injected wallet changes
   useEffect(() => {
@@ -566,7 +587,7 @@ function BrowserCheckout({ skill }: { skill: Skill }) {
   }
 
   async function payWithPrivy() {
-    if (!author.authenticated) return author.login()
+    if (!author.authenticated) return startPrivyLogin()
     if (
       !author.walletAddress ||
       !author.sendTransaction ||
@@ -707,10 +728,8 @@ function BrowserCheckout({ skill }: { skill: Skill }) {
             <button
               type="button"
               onClick={() => {
+                if (!author.authenticated) return startPrivyLogin()
                 setSelectedMethod("privy")
-                if (!author.authenticated) {
-                  author.login()
-                }
               }}
               className="w-full flex items-center justify-between p-4 rounded-xl border border-border/70 bg-card/60 hover:bg-muted/30 hover:border-primary/50 transition-all text-left group cursor-pointer shadow-sm"
             >
@@ -811,8 +830,8 @@ function BrowserCheckout({ skill }: { skill: Skill }) {
                   <Button
                     size="sm"
                     onClick={() => {
+                      if (!author.authenticated) return startPrivyLogin()
                       setSelectedMethod("privy")
-                      if (!author.authenticated) author.login()
                     }}
                   >
                     Sign in with Privy instead
