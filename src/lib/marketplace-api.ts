@@ -15,7 +15,7 @@ type ApiListing = Omit<Skill, "rank" | "authorAddress" | "updatedAt"> & Partial<
 
 const apiBaseUrl = import.meta.env.VITE_SKILLSBAY_API_URL ?? ""
 
-function endpoint(path: string) {
+export function endpoint(path: string) {
   return apiBaseUrl ? new URL(path, apiBaseUrl).toString() : path
 }
 
