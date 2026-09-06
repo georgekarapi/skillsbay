@@ -5,6 +5,12 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      publish_cli:
+        description: Publish the CLI even when no CLI files changed in this run
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -14,6 +20,35 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  detect-changes:
+    name: Detect release changes
+    runs-on: ubuntu-latest
+    outputs:
+      cli: ${{ steps.cli.outputs.changed }}
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect CLI changes in this push
+        id: cli
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          if [ "$EVENT_NAME" != "push" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          elif ! git cat-file -e "$BEFORE_SHA^{commit}" 2>/dev/null; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          elif git diff --quiet "$BEFORE_SHA" "$HEAD_SHA" -- packages/cli; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
   deploy-worker:
     name: Migrate D1 and deploy Worker
     runs-on: ubuntu-latest
@@ -64,8 +99,8 @@ jobs:
 
   publish-cli:
     name: Publish CLI to npm
-    needs: deploy-worker
-    if: github.event_name == 'push' && contains(join(github.event.commits.*.modified, ' '), 'packages/cli/') || contains(join(github.event.commits.*.added, ' '), 'packages/cli/') || contains(join(github.event.commits.*.removed, ' '), 'packages/cli/')
+    needs: [detect-changes, deploy-worker]
+    if: needs.detect-changes.outputs.cli == 'true' || inputs.publish_cli == true
     runs-on: ubuntu-latest
     environment: npm
     permissions:
