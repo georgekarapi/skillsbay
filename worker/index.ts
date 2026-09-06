@@ -13,6 +13,7 @@ import { generateSkillOgPng, generateSkillOgSvg, escapeXml, type OgSkillData } f
 
 type Bindings = {
   APP_ENV: string
+  PUBLIC_APP_ORIGIN?: string
   DB: D1Database
   SKILL_BUNDLES: R2Bucket
   INTERNAL_PUBLISH_TOKEN?: string
@@ -72,6 +73,17 @@ function isWalletAddress(value: string) {
 
 function isUsername(value: string) {
   return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value) && value.length >= 3 && value.length <= 32
+}
+
+function publicAppOrigin(env: Bindings, requestUrl: string) {
+  const configuredOrigin = env.PUBLIC_APP_ORIGIN?.trim()
+  if (configuredOrigin) {
+    try {
+      const origin = new URL(configuredOrigin).origin
+      if (origin.startsWith("https://") || origin.startsWith("http://")) return origin
+    } catch {}
+  }
+  return new URL(requestUrl).origin
 }
 
 const RESERVED_NAMESPACES = new Set([
@@ -917,7 +929,7 @@ app.get("/", async (c) => {
   if (!assetRes.ok) return assetRes
 
   const baseHtml = await assetRes.text()
-  const html = injectSiteSeoMeta(baseHtml, new URL(c.req.url).origin)
+  const html = injectSiteSeoMeta(baseHtml, publicAppOrigin(c.env, c.req.url))
   return c.html(html, 200, {
     "content-type": "text/html; charset=utf-8",
     "cache-control": "public, max-age=0, must-revalidate",
@@ -962,7 +974,7 @@ app.get("/:namespace/:slug", async (c) => {
     })
   }
 
-  const injectedHtml = injectSkillSeoMeta(baseHtml, skillData, new URL(c.req.url).origin)
+  const injectedHtml = injectSkillSeoMeta(baseHtml, skillData, publicAppOrigin(c.env, c.req.url))
 
   return c.html(injectedHtml, 200, {
     "content-type": "text/html; charset=utf-8",
