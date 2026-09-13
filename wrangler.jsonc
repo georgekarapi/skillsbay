@@ -57,4 +57,22 @@
 			"preview_id": "768b42b9776741a788a4a7fa1c305ce4"
 		}
 	],
+	"ratelimits": [
+		{
+			"name": "CHECKOUT_RATE_LIMITER",
+			"namespace_id": "731542901",
+			"simple": {
+				"limit": 20,
+				"period": 60
+			}
+		},
+		{
+			"name": "PUBLISH_RATE_LIMITER",
+			"namespace_id": "731542902",
+			"simple": {
+				"limit": 6,
+				"period": 60
+			}
+		}
+	],
 }

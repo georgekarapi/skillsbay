@@ -1,258 +1,183 @@
 # SkillsBay
 
-SkillsBay is a Web3-native package manager and marketplace for paid AI-agent skills. Publishers list private `SKILL.md` bundles, agents pay once in USDC through x402, and the CLI installs the purchased skill into `.agents/skills` or `.claude/skills`.
+[![Deploy SkillsBay](https://github.com/georgekarapi/skillsbay/actions/workflows/deploy.yml/badge.svg)](https://github.com/georgekarapi/skillsbay/actions/workflows/deploy.yml)
 
-SkillsBay uses the following partner services:
+**SkillsBay is a marketplace and CLI for paid AI-agent skills.** Authors publish a private `SKILL.md` bundle, buyers pay once in USDC, and the CLI installs the unlocked skill into their agent workspace.
 
-- **Base** provides skill registration, purchase receipts, and immediate royalty settlement.
-- **The Graph** indexes skills, purchases, author earnings, and installation analytics.
-- **Privy** gives authors passwordless onboarding and embedded-wallet publishing.
-- **x402** gives agents a standard HTTP 402 payment flow.
-- **Circle Paymaster** supports reliable USDC-denominated settlement operations.
+Visit [skillsbay.dev](https://skillsbay.dev) to browse the marketplace.
 
-## System architecture
+## Why SkillsBay?
 
-```mermaid
-flowchart LR
-  Author[Author] -->|Privy embedded wallet| Web[SkillsBay web app]
-  Web -->|register / update skill| Registry[SkillRegistry on Base]
-  Web -->|signed private bundle upload| Access[SkillsBay access service]
-  Access --> Storage[Private bundle storage]
+AI agents can use reusable instruction bundles, but authors need a practical way to distribute paid work without exposing it before purchase. SkillsBay provides the delivery path:
 
-  Agent[Agent or CLI] -->|request paid bundle| Access
-  Access -->|HTTP 402 challenge| Agent
-  Agent -->|USDC x402 settlement| Registry
-  Access -->|record purchase| Registry
-  Paymaster[Circle Paymaster] -->|settlement support| Access
+1. An author registers a skill and uploads its private bundle.
+2. A buyer discovers it on the marketplace or from the CLI.
+3. The buyer completes a browser checkout or an agent pays through x402.
+4. SkillsBay verifies entitlement and installs the `SKILL.md` locally.
 
-  Registry -->|events| Graph[The Graph subgraph]
-  Graph -->|marketplace + analytics| Access
-  Access -->|private SKILL.md after entitlement| Agent
+| For authors | For agent users |
+| --- | --- |
+| Publish a versioned private bundle from the web app. | Discover and install skills with one CLI command. |
+| Receive USDC royalties when a purchase is recorded. | Pay with a browser wallet or a funded agent wallet. |
+| Manage price, availability, and bundle updates. | Keep purchased skills in the current project workspace. |
+
+## Quick start
+
+Use the published CLI—no repository checkout required:
+
+```bash
+npx skillsbay search <query>
+npx skillsbay info karapi/skillsbay
+npx skillsbay add karapi/skillsbay
 ```
 
-## Purchase lifecycle
+The final command opens a browser checkout when no agent wallet is configured. After payment, the CLI waits for confirmation and installs the bundle in `.agents/skills/<skill>/SKILL.md` (and selected agent-specific locations).
+
+For an autonomous Base Sepolia agent, provide a funded wallet only in the process environment:
+
+```bash
+export SKILLSBAY_PRIVATE_KEY=0x<funded-agent-wallet-private-key>
+npx skillsbay add karapi/skillsbay --yes
+unset SKILLSBAY_PRIVATE_KEY
+```
+
+To deliberately install a public GitHub skill instead of using the marketplace:
+
+```bash
+npx skillsbay add owner/repository --fallback
+```
+
+Read the [CLI package guide](packages/cli/README.md) for all commands and local CLI build instructions.
+
+## How a purchase works
 
 ```mermaid
 sequenceDiagram
-  participant C as skillsbay CLI
-  participant A as SkillsBay access service
-  participant F as x402 facilitator
-  participant R as SkillRegistry
-  participant P as Circle Paymaster
-  participant G as The Graph
+  participant Author
+  participant Web as SkillsBay web app
+  participant API as SkillsBay Worker
+  participant Registry as SkillRegistry on Base
+  participant Buyer as Buyer or agent CLI
 
-  C->>A: Request paid bundle
-  A-->>C: 402 payment requirements (USDC)
-  C->>F: Sign and settle x402 payment
-  F->>R: Transfer USDC to registry
-  F-->>A: Settled payment receipt
-  A->>P: Request settlement support
-  P->>R: Record purchase
-  R->>R: Mark entitlement and prevent replay
-  R->>R: Send 95% to author / 5% to treasury
-  R-->>G: SkillPurchased event
-  A-->>C: Private SKILL.md after entitlement
+  Author->>Web: Publish a private SKILL.md bundle
+  Web->>Registry: Register or update skill metadata
+  Web->>API: Store the private bundle
+  Buyer->>API: Discover skill and request checkout
+  Buyer->>Registry: Pay in USDC (browser) or settle x402 (agent)
+  API->>Registry: Record the verified purchase
+  API-->>Buyer: Release the bundle after entitlement verification
+  Buyer->>Buyer: Install SKILL.md into the workspace
 ```
 
-## Repository structure
+SkillsBay uses Base for the registry and settlement record, The Graph for marketplace indexing, Privy for browser-wallet onboarding, x402 for agent payments, and Cloudflare Workers/D1/R2 for the marketplace API and private bundle delivery.
+
+## Repository guide
 
 ```text
-.
-├── src/                         # Vite + React marketplace and author dashboard
-│   ├── components/               # Atomic UI components and shadcn primitives
-│   ├── pages/                    # Marketplace, skill, publish, and dashboard routes
-│   └── lib/                      # Browser API and chain helpers
-├── worker/                       # Access API and x402 entitlement gate
-│   ├── index.ts                  # API routes and settlement orchestration
-│   └── storage.ts                # Private bundle storage
-├── db/migrations/                # Application data schema migrations
-├── packages/
-│   ├── cli/                      # `npx skillsbay add <namespace>/<skill>`
-│   ├── contracts/                # Foundry project for SkillRegistry
-│   │   ├── src/                  # Solidity source and mocks
-│   │   ├── script/               # Guarded Sepolia and mainnet deployment scripts
-│   │   └── test/                 # Foundry tests
-│   ├── shared/                   # Shared signed authorization formats
-│   └── subgraph/                 # The Graph manifest, schema, mappings, and ABI
-└── .storybook/                   # Storybook configuration for the UI system
+src/                    React + Vite marketplace and author dashboard
+worker/                 Cloudflare Worker API, checkout, and bundle access
+db/migrations/          D1 schema migrations
+packages/cli/           Published `skillsbay` CLI
+packages/contracts/     Foundry SkillRegistry contract and deployment scripts
+packages/shared/        Shared signed authorization message formats
+packages/subgraph/      The Graph schema, mappings, and manifest
+skills/                 SkillsBay's own agent skill documentation
 ```
 
-## Configuration map
+## Run locally
 
-All local configuration templates live at the workspace root. Each file belongs to one runtime, which keeps public browser values, Worker secrets, and deployment credentials separate.
+### Prerequisites
 
-| File | Used by | Contains |
-| --- | --- | --- |
-| `.env` | Vite | Browser-safe `VITE_*` values only. |
-| `.dev.vars` | Wrangler local development | Worker secrets and local bindings. |
-| `.env.sepolia` | Contract deploy command | Base Sepolia deployment inputs. |
-| `.env.mainnet` | Contract deploy command | Base mainnet deployment inputs. |
+- Node.js 22 or newer
+- pnpm 10
+- A Cloudflare account for remote deployment or local Wrangler storage
+- Foundry only when working on the contract
 
-Copy from the matching `.example` file. None of the real environment files should be committed.
-
-## Smart-contract design
-
-`SkillRegistry` is intentionally small. It does not custody publisher earnings or require a withdrawal flow. Purchase settlement distributes USDC in the same transaction that records the buyer’s entitlement.
-
-```mermaid
-classDiagram
-  class SkillRegistry {
-    +IERC20 usdc
-    +address owner
-    +address recorder
-    +address platformTreasury
-    +uint16 platformFeeBps
-    +registerSkill(skillId, price, majorVersion, metadataURI)
-    +updateSkill(skillId, price, active, metadataURI)
-    +recordPurchase(skillId, buyer, amount, receiptHash)
-    +setRecorder(recorder)
-    +setPlatformFeeBps(feeBps)
-    +getSkill(skillId)
-  }
-
-  class Publisher {
-    +registerSkill
-    +updateSkill
-  }
-  class CircleRecorder {
-    +recordPurchase
-  }
-  class Treasury {
-    +receive platform fee
-  }
-  class Buyer {
-    +hasPurchased
-  }
-
-  Publisher --> SkillRegistry : owns a skill
-  CircleRecorder --> SkillRegistry : recorder role
-  SkillRegistry --> Treasury : immediate fee transfer
-  SkillRegistry --> Buyer : purchase entitlement
-```
-
-### Roles and permissions
-
-| Role | What it can do |
-| --- | --- |
-| Registry owner | Rotate the recorder and adjust the platform fee within the contract cap. |
-| Publisher | Register a new skill and update only their own skill’s price, active state, and metadata URI. |
-| Recorder smart account | Record a settled x402 receipt exactly once. It cannot edit skills or change protocol settings. |
-| Buyer | Pays for a skill and receives a permanent on-chain purchase entitlement. |
-
-### Settlement rules
-
-```mermaid
-flowchart LR
-  PaidUSDC[USDC settled into registry] --> Receipt{Valid unique receipt?}
-  Receipt -->|No| Revert[Revert]
-  Receipt -->|Yes| Access[Record buyer entitlement]
-  Access --> Author[95% to publisher]
-  Access --> Treasury[5% to platform treasury]
-```
-
-The contract validates that the skill exists and is active, the amount equals its listed price, the buyer has not already purchased it, and the payment receipt has not already been processed.
-
-## Deployment modes
-
-| Command | Network | Initial owner and treasury |
-| --- | --- | --- |
-| `pnpm deploy:registry` | Base Sepolia | The deployment account |
-| `pnpm deploy:registry -- --mainnet` | Base mainnet | The project Safe |
-
-The mainnet script is chain-guarded and refuses to execute anywhere except Base mainnet. The guarded deploy command also checks `SKILL_REGISTRY_ADDRESS` and Foundry broadcast output before submitting a new deployment.
-
-### Contract deployment
-
-```bash
-# Base Sepolia
-cp .env.sepolia.example .env.sepolia
-# Fill the placeholder values, then:
-pnpm deploy:registry
-
-# Base mainnet
-cp .env.mainnet.example .env.mainnet
-# Fill the placeholder values, then:
-pnpm deploy:registry -- --mainnet
-```
-
-The recorder address configured at deployment must be the public address derived from the same secret configured in the Worker as `RECORDER_PRIVATE_KEY`.
-
-## Circle Paymaster
-
-Circle Paymaster supports reliable USDC-denominated gas for settlement operations. Its implementation credentials and operational configuration remain private to the deployment environment.
-
-## Post-deployment configuration
-
-After a successful contract deployment, configure the emitted registry address in all consumers:
-
-```mermaid
-flowchart TD
-  Address[Deployed SkillRegistry address] --> Vite[VITE_SKILL_REGISTRY_ADDRESS]
-  Address --> WorkerRegistry[Worker: SKILL_REGISTRY_ADDRESS]
-  Address --> X402[Worker: X402_RECIPIENT_ADDRESS]
-  Address --> Graph[subgraph.yaml source.address]
-  DeployBlock[Deployment block] --> GraphBlock[subgraph.yaml startBlock]
-```
-
-Then deploy the subgraph and set `GRAPH_API_URL` in the Worker. The Worker uses the indexed data for marketplace rankings and author analytics.
-
-```bash
-pnpm --filter @skillsbay/subgraph run deploy
-```
-
-### Application deployment
-
-Deploy the marketplace UI and access service with the deployment script:
-
-```bash
-pnpm run deploy:worker
-```
-
-### Continuous deployment
-
-Merges to `main` run [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml): it builds the marketplace, applies pending remote D1 migrations, then deploys the Worker. Configure the `production` GitHub environment with `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
-
-The Worker is bound to `skillsbay.dev` as a Wrangler custom domain. Before the first production deployment, add and activate the `skillsbay.dev` zone in that same Cloudflare account.
-
-The Worker derives canonical and social URLs from the request origin, keeping the marketplace UI and API on the same deployment origin.
-
-When a merge changes `packages/cli`, the same workflow builds and publishes the `skillsbay` npm package with npm trusted publishing (GitHub OIDC). Bump `packages/cli/package.json` first; npm versions are immutable. The `npm` GitHub environment needs no npm token, but must be configured as the package's trusted publisher.
-
-Keep deployment credentials and service secrets out of source control. Public application settings should be limited to values that are safe to expose in the browser or client configuration.
-
-## Local development
+### Marketplace app and Worker
 
 ```bash
 pnpm install
+cp .env.example .env
 cp .dev.vars.example .dev.vars
 pnpm db:migrate:local
 pnpm dev
 ```
 
-Run Storybook for the shadcn-based UI system:
+`pnpm dev` serves the frontend and Worker together. The browser uses same-origin `/v1/*` API calls, so there is no separate frontend API URL to configure.
+
+### Local CLI build
+
+The published CLI has its production API origin embedded at release time. For a local build, set the target origin in the root `.env` before building:
 
 ```bash
-pnpm storybook
+# .env
+SKILLSBAY_API_URL=http://localhost:5173
+
+pnpm --filter skillsbay build
+node packages/cli/dist/cli.js add karapi/skillsbay
 ```
 
-## Verification
+## Configuration and secrets
+
+| File or environment | Purpose | Safe to commit? |
+| --- | --- | --- |
+| `.env` | Browser-safe `VITE_*` values and the local CLI build origin. | No |
+| `.dev.vars` | Local Worker secrets and bindings. | No |
+| `.env.sepolia` | Base Sepolia deployment inputs. | No |
+| `.env.mainnet` | Base mainnet deployment inputs. | No |
+| GitHub `production` environment | Cloudflare deployment credentials and public production build values. | Managed in GitHub |
+| GitHub `npm` environment | The production API origin embedded in published CLI releases. | Managed in GitHub |
+
+Use the committed `*.example` files as templates. Never commit private keys, RPC URLs containing credentials, or real environment files.
+
+## Build and verify
 
 ```bash
+# Marketplace and Worker
 pnpm build
+
+# CLI
 pnpm --filter skillsbay build
+
+# Smart contract
 (cd packages/contracts && forge test)
+
+# Subgraph
 pnpm --filter @skillsbay/subgraph codegen
 pnpm --filter @skillsbay/subgraph build
 ```
 
-## Security notes
+## Deploy
 
-- Never commit private keys, RPC credentials, deployment outputs containing sensitive data, or service secrets.
-- Keep payment-operation credentials in the deployment secret store and limit their on-chain authority to purchase recording.
-- Keep the registry owner in a multisig Safe for production deployments.
-- Keep bundles in private storage and rotate service credentials if compromise is suspected.
+Merges to `main` run [the deployment workflow](.github/workflows/deploy.yml).
+
+- Worker changes build the marketplace, apply remote D1 migrations, and deploy the Cloudflare Worker.
+- CLI changes build and publish the `skillsbay` npm package with trusted publishing. Bump `packages/cli/package.json` before merging a CLI release; npm versions are immutable.
+- The Worker is served at `skillsbay.dev`. The CLI release origin comes from the GitHub `npm` environment and is embedded during the build, not read from a user-controlled runtime variable.
+
+For contract deployment, copy the appropriate environment template and run:
+
+```bash
+pnpm deploy:registry              # Base Sepolia
+pnpm deploy:registry -- --mainnet # Base mainnet; guarded script
+```
+
+## Security model
+
+- Bundles live in private R2 and are served only through the Worker after entitlement verification.
+- The registry records a purchase once and distributes 95% of the payment to the author and 5% to the platform treasury in the same flow.
+- Author, buyer, and bundle-read operations use signed, scoped authorizations.
+- Production payment-operation credentials should have only the authority needed to record purchases.
 - Verify the deployed registry owner, recorder, treasury, USDC token, and fee before enabling payments.
 
-## Hackathon tracks
+## Further reading
 
-The sponsor implementation details and demo evidence map are documented in [HACKATHON.md](./HACKATHON.md).
+- [CLI reference](packages/cli/README.md)
+- [Hackathon architecture and demo notes](HACKATHON.md)
+- [Deployment workflow](.github/workflows/deploy.yml)
+- [Database migrations](db/migrations)
+- [Smart contract source](packages/contracts)
+
+## Contributing
+
+Start with the local setup above, keep secrets out of commits, and run the relevant build or test command before opening a pull request. For substantial changes, include the affected user flow and verification steps in the pull request description.

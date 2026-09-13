@@ -778,7 +778,7 @@ function BrowserCheckout({ skill }: { skill: Skill }) {
 
   return (
     <Dialog open={open} onOpenChange={setCheckoutOpen}>
-      <DialogContent className="sm:max-w-115">
+      <DialogContent className="sm:max-w-115" showCloseButton={isTokenExpired}>
         {tokenValidation.isLoading ? (
           <>
             <DialogHeader>

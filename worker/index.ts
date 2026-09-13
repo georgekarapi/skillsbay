@@ -16,6 +16,8 @@ type Bindings = {
   DB: D1Database
   SKILL_BUNDLES: R2Bucket
   CHECKOUT_TOKENS?: KVNamespace
+  CHECKOUT_RATE_LIMITER?: RateLimit
+  PUBLISH_RATE_LIMITER?: RateLimit
   INTERNAL_PUBLISH_TOKEN?: string
   GRAPH_API_URL?: string
   GRAPH_API_KEY?: string
@@ -49,7 +51,54 @@ type SkillDbRow = {
   featured?: number
 }
 
-const app = new Hono<{ Bindings: Bindings }>()
+type SecurityVariables = { cspNonce: string }
+const app = new Hono<{ Bindings: Bindings; Variables: SecurityVariables }>()
+
+function base64UrlRandomToken(byteLength = 32) {
+  const bytes = crypto.getRandomValues(new Uint8Array(byteLength))
+  let binary = ""
+  for (const byte of bytes) binary += String.fromCharCode(byte)
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "")
+}
+
+function jsonForHtmlScript(value: unknown) {
+  // JSON is not automatically safe inside an HTML <script> element: a
+  // publisher-provided `</script>` would otherwise terminate the element.
+  return JSON.stringify(value)
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029")
+}
+
+function addScriptNonce(html: string, nonce: string) {
+  return html.replace(/<script\b(?![^>]*\bnonce=)/gi, `<script nonce="${nonce}"`)
+}
+
+app.use("*", async (c, next) => {
+  const nonce = base64UrlRandomToken(16)
+  c.set("cspNonce", nonce)
+  c.header("content-security-policy", [
+    "default-src 'self'",
+    `script-src 'self' 'nonce-${nonce}'`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob: https:",
+    "font-src 'self' data:",
+    "connect-src 'self' https: wss:",
+    "frame-src 'self' https://*.privy.io https://privy.io",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+  ].join("; "))
+  c.header("referrer-policy", "no-referrer")
+  c.header("permissions-policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=()")
+  c.header("x-content-type-options", "nosniff")
+  c.header("x-frame-options", "DENY")
+  c.header("strict-transport-security", "max-age=31536000; includeSubDomains")
+  await next()
+})
 app.use("/v1/*", cors({
   origin: "*",
   allowHeaders: ["Content-Type", "Authorization", "PAYMENT-SIGNATURE", "PAYMENT-REQUIRED", "payment-signature", "payment-required"],
@@ -103,7 +152,7 @@ function parseSkillFrontmatter(markdown?: string): { title?: string; description
   return result
 }
 
-function injectSkillSeoMeta(html: string, skill: OgSkillData, origin: string): string {
+function injectSkillSeoMeta(html: string, skill: OgSkillData, origin: string, nonce: string): string {
   const title = `${skill.title} by @${skill.namespace} — SkillsBay`
   const description = skill.summary || "Discover, buy, and run verified AI agent skills on SkillsBay."
   const url = `${origin}/${skill.namespace}/${skill.slug}`
@@ -141,7 +190,7 @@ function injectSkillSeoMeta(html: string, skill: OgSkillData, origin: string): s
     .replace(/<meta name="twitter:description" content=".*?" \/>/s, `<meta name="twitter:description" content="${escapeXml(description)}" />`)
     .replace(/<meta name="twitter:image" content=".*?" \/>/s, `<meta name="twitter:image" content="${escapeXml(ogImageUrl)}" />`)
 
-  const jsonLdTag = `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>\n  </head>`
+  const jsonLdTag = `<script nonce="${nonce}" type="application/ld+json">${jsonForHtmlScript(jsonLd)}</script>\n  </head>`
   modified = modified.replace("</head>", jsonLdTag)
 
   return modified
@@ -152,14 +201,8 @@ function injectSkillSeoMeta(html: string, skill: OgSkillData, origin: string): s
  * avoids a second network round trip and the client-side loading state on the
  * first render, without exposing a protected bundle or any payment data.
  */
-function injectSkillBootstrap(html: string, skill: Listing): string {
-  const serializedSkill = JSON.stringify(skill)
-    .replace(/</g, "\\u003c")
-    .replace(/>/g, "\\u003e")
-    .replace(/&/g, "\\u0026")
-    .replace(/\u2028/g, "\\u2028")
-    .replace(/\u2029/g, "\\u2029")
-  return html.replace("</head>", `<script>window.__SKILLSBAY_INITIAL_SKILL__=${serializedSkill}</script>\n  </head>`)
+function injectSkillBootstrap(html: string, skill: Listing, nonce: string): string {
+  return html.replace("</head>", `<script nonce="${nonce}">window.__SKILLSBAY_INITIAL_SKILL__=${jsonForHtmlScript(skill)}</script>\n  </head>`)
 }
 
 function injectSiteSeoMeta(html: string, origin: string): string {
@@ -305,6 +348,26 @@ async function listings(env: Bindings) {
 function isInternalPublisher(request: Request, env: Bindings) {
   const expected = env.INTERNAL_PUBLISH_TOKEN
   return Boolean(expected && request.headers.get("authorization") === `Bearer ${expected}`)
+}
+
+async function enforceRateLimit(c: { env: Bindings; req: { header(name: string): string | undefined }; json: (body: unknown, status?: 429, headers?: Record<string, string>) => Response }, limiter: RateLimit | undefined, route: string) {
+  // Local development intentionally has no binding. Production always supplies
+  // these bindings through wrangler.jsonc.
+  if (!limiter) return null
+  const actor = c.req.header("cf-connecting-ip") ?? "unknown"
+  try {
+    const { success } = await limiter.limit({ key: `${route}:${actor}` })
+    return success ? null : c.json({ error: "Too many requests. Please try again shortly." }, 429, { "retry-after": "60" })
+  } catch (error) {
+    console.error("Rate limit binding failed", error)
+    // Do not turn a rate-limit service incident into an authentication bypass.
+    return c.json({ error: "Request protection is temporarily unavailable." }, 503)
+  }
+}
+
+function redemptionToken(request: Request) {
+  const authorization = request.headers.get("authorization")
+  return authorization?.startsWith("Bearer ") ? authorization.slice("Bearer ".length) : null
 }
 
 function usdc(raw: string | number | bigint) {
@@ -458,8 +521,11 @@ app.get("/v1/skills/:namespace/:slug", async (c) => {
   return skill ? c.json({ data: skill }) : c.json({ error: "Skill not found" }, 404)
 })
 app.get("/v1/install-requests/:id", async (c) => {
-  const request = await c.env.DB.prepare("SELECT id, skill_id, status, expires_at FROM install_requests WHERE id = ?").bind(c.req.param("id")).first<{ id: string; skill_id: string; status: "pending" | "completed"; expires_at: string }>()
+  const token = redemptionToken(c.req.raw)
+  if (!token) return c.json({ error: "A checkout redemption token is required" }, 401)
+  const request = await c.env.DB.prepare("SELECT id, skill_id, status, expires_at, redemption_token_sha256 FROM install_requests WHERE id = ?").bind(c.req.param("id")).first<{ id: string; skill_id: string; status: "pending" | "completed"; expires_at: string; redemption_token_sha256: string }>()
   if (!request) return c.json({ error: "Install request not found or already consumed" }, 404)
+  if (!request.redemption_token_sha256 || await sha256Hex(token) !== request.redemption_token_sha256) return c.json({ error: "Invalid checkout redemption token" }, 403)
   if (Date.parse(request.expires_at) <= Date.now()) {
     await c.env.DB.prepare("DELETE FROM install_requests WHERE id = ?").bind(request.id).run()
     if (c.env.CHECKOUT_TOKENS) {
@@ -561,13 +627,16 @@ app.post("/v1/install-requests/:id/complete", async (c) => {
   return c.json({ data: { status: "completed", skillId: request.skill_id } })
 })
 app.post("/v1/install-requests/:namespace/:slug", async (c) => {
+  const rateLimited = await enforceRateLimit(c, c.env.CHECKOUT_RATE_LIMITER, "checkout-create")
+  if (rateLimited) return rateLimited
   const skillId = skillIdFromParams(c.req)
   if (!splitSkillId(skillId)) return c.json({ error: "Invalid skill ID" }, 400)
   if (!(await listings(c.env)).data.some((skill) => skill.id === skillId)) return c.json({ error: "Skill not found" }, 404)
   const id = crypto.randomUUID()
+  const token = base64UrlRandomToken()
   const ttlSeconds = 15 * 60
   const expiresAt = new Date(Date.now() + ttlSeconds * 1_000).toISOString()
-  await c.env.DB.prepare("INSERT INTO install_requests (id, skill_id, expires_at) VALUES (?, ?, ?)").bind(id, skillId, expiresAt).run()
+  await c.env.DB.prepare("INSERT INTO install_requests (id, skill_id, redemption_token_sha256, expires_at) VALUES (?, ?, ?, ?)").bind(id, skillId, await sha256Hex(token), expiresAt).run()
   if (c.env.CHECKOUT_TOKENS) {
     try {
       await c.env.CHECKOUT_TOKENS.put(
@@ -579,7 +648,7 @@ app.post("/v1/install-requests/:namespace/:slug", async (c) => {
       console.error("Failed to store checkout token in KV", err)
     }
   }
-  return c.json({ data: { id, expiresAt } }, 201)
+  return c.json({ data: { id, redemptionToken: token, expiresAt } }, 201)
 })
 app.get("/v1/skills/:namespace/:slug/access/:buyer", async (c) => {
   if (!c.env.SKILL_REGISTRY_ADDRESS || !c.env.BASE_SEPOLIA_RPC_URL) return c.json({ error: "Registry verification is not configured" }, 503)
@@ -595,6 +664,8 @@ app.get("/v1/skills/:namespace/:slug/access/:buyer", async (c) => {
   return c.json({ data: { purchased: purchased || author, access: author ? "author" : purchased ? "purchase" : null } })
 })
 app.post("/v1/purchases/:namespace/:slug", async (c) => {
+  const rateLimited = await enforceRateLimit(c, c.env.CHECKOUT_RATE_LIMITER, "browser-purchase")
+  if (rateLimited) return rateLimited
   const skillId = skillIdFromParams(c.req)
   if (!splitSkillId(skillId)) return c.json({ error: "Invalid skill ID" }, 400)
   if (!c.env.SKILL_REGISTRY_ADDRESS || !c.env.RECORDER_PRIVATE_KEY || !c.env.BASE_SEPOLIA_RPC_URL) return c.json({ error: "Checkout is not configured", code: "CHECKOUT_NOT_CONFIGURED" }, 503)
@@ -618,7 +689,9 @@ app.post("/v1/purchases/:namespace/:slug", async (c) => {
     const alreadyRecorded = await client.readContract({ address: c.env.SKILL_REGISTRY_ADDRESS as `0x${string}`, abi: skillRegistryAbi, functionName: "processedPaymentTransactions", args: [payload.paymentTransactionHash as `0x${string}`] })
     if (!alreadyRecorded) await recordPurchase(c.env, { skillId, buyer: payload.buyer, amount: amount.toString(), paymentTransactionHash: payload.paymentTransactionHash })
     if (payload.installRequestId) {
-      await c.env.DB.prepare("UPDATE install_requests SET status = 'completed', buyer_address = ?, payment_transaction_hash = ? WHERE id = ?").bind(payload.buyer.toLowerCase(), payload.paymentTransactionHash, payload.installRequestId).run()
+      const completion = await c.env.DB.prepare("UPDATE install_requests SET status = 'completed', buyer_address = ?, payment_transaction_hash = ? WHERE id = ? AND skill_id = ? AND status = 'pending' AND expires_at > ?")
+        .bind(payload.buyer.toLowerCase(), payload.paymentTransactionHash, payload.installRequestId, skillId, new Date().toISOString()).run()
+      if ((completion.meta.changes ?? 0) === 0) return c.json({ error: "Install request was already completed or expired", code: "INSTALL_REQUEST_NOT_PENDING" }, 409)
       if (c.env.CHECKOUT_TOKENS) {
         await c.env.CHECKOUT_TOKENS.delete(`install_request:${payload.installRequestId}`).catch(() => {})
       }
@@ -773,6 +846,8 @@ app.get("/v1/authors/:address", async (c) => {
   }
 })
 app.get("/v1/install/:namespace/:slug/content", async (c) => {
+  const rateLimited = await enforceRateLimit(c, c.env.CHECKOUT_RATE_LIMITER, "x402-content")
+  if (rateLimited) return rateLimited
   const skillId = skillIdFromParams(c.req)
   if (!splitSkillId(skillId)) return c.json({ error: "Invalid skill ID" }, 400)
   const skill = (await listings(c.env)).data.find((item) => item.id === skillId)
@@ -780,7 +855,7 @@ app.get("/v1/install/:namespace/:slug/content", async (c) => {
   if (!c.env.X402_RECIPIENT_ADDRESS || !c.env.SKILL_REGISTRY_ADDRESS || !c.env.RECORDER_PRIVATE_KEY || !c.env.BASE_SEPOLIA_RPC_URL) return c.json({ error: "x402 checkout is not configured", code: "X402_NOT_CONFIGURED" }, 503)
   if (c.env.X402_RECIPIENT_ADDRESS.toLowerCase() !== c.env.SKILL_REGISTRY_ADDRESS.toLowerCase()) return c.json({ error: "x402 recipient must be the SkillRegistry", code: "X402_RECIPIENT_MISMATCH" }, 503)
   const markdown = await getBundle({ db: c.env.DB, bucket: c.env.SKILL_BUNDLES, skillId })
-  const bundleContent = markdown || `# ${skill.title}\n\n${skill.summary}\n\n## Instructions\n\nRun with: npx skillsbay add ${skill.namespace}/${skill.slug}\n`
+  if (!markdown) return c.json({ error: "Bundle is unavailable; no payment was requested", code: "BUNDLE_UNAVAILABLE" }, 503)
   const resourceServer = new x402ResourceServer(new HTTPFacilitatorClient({ url: "https://x402.org/facilitator" })).register("eip155:84532", new ExactEvmScheme())
   await resourceServer.initialize()
   resourceServer.onAfterSettle(async ({ result, requirements }) => {
@@ -789,8 +864,9 @@ app.get("/v1/install/:namespace/:slug/content", async (c) => {
     const installRequestId = c.req.query("installRequestId")
     if (installRequestId && installRequestId !== "1") {
       try {
-        await c.env.DB.prepare("UPDATE install_requests SET status = 'completed', buyer_address = ?, payment_transaction_hash = ? WHERE id = ?").bind(result.payer.toLowerCase(), result.transaction, installRequestId).run()
-        if (c.env.CHECKOUT_TOKENS) {
+        const completion = await c.env.DB.prepare("UPDATE install_requests SET status = 'completed', buyer_address = ?, payment_transaction_hash = ? WHERE id = ? AND skill_id = ? AND status = 'pending' AND expires_at > ?")
+          .bind(result.payer.toLowerCase(), result.transaction, installRequestId, skillId, new Date().toISOString()).run()
+        if ((completion.meta.changes ?? 0) > 0 && c.env.CHECKOUT_TOKENS) {
           await c.env.CHECKOUT_TOKENS.delete(`install_request:${installRequestId}`).catch(() => {})
         }
       } catch (err) {
@@ -806,7 +882,7 @@ app.get("/v1/install/:namespace/:slug/content", async (c) => {
     false,
   )
   const gateResponse = await gate(c, async () => {
-    c.res = c.text(bundleContent, 200, { "content-type": "text/markdown; charset=utf-8", "cache-control": "no-store" })
+    c.res = c.text(markdown, 200, { "content-type": "text/markdown; charset=utf-8", "cache-control": "no-store" })
   })
   return gateResponse || c.res
 })
@@ -842,6 +918,8 @@ app.post("/v1/publish/bundles/:namespace/:slug/read", async (c) => {
   return markdown ? c.json({ data: { markdown } }) : c.json({ error: "Bundle not found" }, 404)
 })
 app.post("/v1/publish/bundles/:namespace/:slug", async (c) => {
+  const rateLimited = await enforceRateLimit(c, c.env.PUBLISH_RATE_LIMITER, "publish-bundle")
+  if (rateLimited) return rateLimited
   const skillId = skillIdFromParams(c.req)
   if (!splitSkillId(skillId)) return c.json({ error: "Invalid skill ID" }, 400)
   type PublishPayload = { markdown?: string; author?: string; issuedAt?: string; signature?: string; category?: string }
@@ -1029,7 +1107,7 @@ app.get("/", async (c) => {
   if (!assetRes.ok) return assetRes
 
   const baseHtml = await assetRes.text()
-  const html = injectSiteSeoMeta(baseHtml, publicAppOrigin(c.env, c.req.url))
+  const html = addScriptNonce(injectSiteSeoMeta(baseHtml, publicAppOrigin(c.env, c.req.url)), c.get("cspNonce"))
   return c.html(html, 200, {
     "content-type": "text/html; charset=utf-8",
     "cache-control": "public, max-age=0, must-revalidate",
@@ -1070,13 +1148,14 @@ app.get("/:namespace/:slug", async (c) => {
   }
 
   if (!skillData) {
-    return c.html(baseHtml, 200, {
+    return c.html(addScriptNonce(baseHtml, c.get("cspNonce")), 200, {
       "content-type": "text/html; charset=utf-8",
     })
   }
 
-  const seoHtml = injectSkillSeoMeta(baseHtml, skillData, publicAppOrigin(c.env, c.req.url))
-  const injectedHtml = listing ? injectSkillBootstrap(seoHtml, listing) : seoHtml
+  const nonce = c.get("cspNonce")
+  const seoHtml = injectSkillSeoMeta(addScriptNonce(baseHtml, nonce), skillData, publicAppOrigin(c.env, c.req.url), nonce)
+  const injectedHtml = listing ? injectSkillBootstrap(seoHtml, listing, nonce) : seoHtml
 
   return c.html(injectedHtml, 200, {
     "content-type": "text/html; charset=utf-8",
@@ -1091,6 +1170,11 @@ app.get("/:namespace/:slug", async (c) => {
 app.all("*", async (c) => {
   if (!c.env.ASSETS) return c.notFound()
   const assetRes = await c.env.ASSETS.fetch(c.req.raw)
+  if (assetRes.ok && assetRes.headers.get("content-type")?.includes("text/html")) {
+    const headers = new Headers(assetRes.headers)
+    headers.set("content-type", "text/html; charset=utf-8")
+    return new Response(addScriptNonce(await assetRes.text(), c.get("cspNonce")), { status: assetRes.status, headers })
+  }
   return assetRes.ok ? assetRes : c.notFound()
 })
 

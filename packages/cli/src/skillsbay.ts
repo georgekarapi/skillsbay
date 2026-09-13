@@ -45,12 +45,12 @@ const READ_RETRY_DELAYS_MS = [250, 750] as const;
  * Worker. This is intentionally not used for payment or checkout-creation
  * POSTs, which must not be repeated without an idempotency contract.
  */
-export async function fetchApiRead(input: string): Promise<Response> {
+export async function fetchApiRead(input: string, init?: RequestInit): Promise<Response> {
   let lastError: unknown;
 
   for (let attempt = 0; attempt <= READ_RETRY_DELAYS_MS.length; attempt++) {
     try {
-      return await fetch(input);
+      return await fetch(input, init);
     } catch (error) {
       lastError = error;
       const delay = READ_RETRY_DELAYS_MS[attempt];
@@ -184,7 +184,7 @@ export async function completeBrowserCheckout(
   });
   if (!createResponse.ok) throw new Error(`${createResponse.status} ${await createResponse.text()}`);
 
-  const created = (await createResponse.json()) as { data: { id: string; expiresAt: string } };
+  const created = (await createResponse.json()) as { data: { id: string; redemptionToken: string; expiresAt: string } };
   const checkoutUrl = new URL(`/${username}/${skillSlug}`, apiUrl);
   checkoutUrl.searchParams.set('checkout', created.data.id);
 
@@ -203,7 +203,9 @@ export async function completeBrowserCheckout(
 
   while (true) {
     await sleep(2000);
-    const response = await fetchApiRead(endpoint(`/v1/install-requests/${created.data.id}`));
+    const response = await fetchApiRead(endpoint(`/v1/install-requests/${created.data.id}`), {
+      headers: { authorization: `Bearer ${created.data.redemptionToken}` },
+    });
     if (response.status === 410) throw new Error('Browser checkout expired before payment was confirmed.');
     if (!response.ok) throw new Error(`${response.status} ${await response.text()}`);
 
