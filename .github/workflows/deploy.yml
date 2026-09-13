@@ -157,6 +157,9 @@ jobs:
 
       - name: Build CLI
         run: pnpm --filter skillsbay build
+        env:
+          # Embed the trusted production API origin in the published CLI.
+          SKILLSBAY_API_URL: https://skillsbay.dev
 
       - name: Confirm the CLI version is new
         working-directory: packages/cli

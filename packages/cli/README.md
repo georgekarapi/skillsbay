@@ -49,14 +49,16 @@ npx skillsbay add https://github.com/owner/repository.git
 
 ## Configuration
 
-`SKILLSBAY_API_URL` defaults to `https://skillsbay.dev`. Set it only when
-using another SkillsBay deployment:
+The API origin is embedded when the CLI is built. Releases are built by GitHub
+Actions with `https://skillsbay.dev`, so users cannot replace it at runtime.
+For a local build, add this to the repository-root `.env` before building:
 
 ```bash
-export SKILLSBAY_API_URL=https://your-skillsbay-deployment.example
+SKILLSBAY_API_URL=http://localhost:5173
+pnpm --filter skillsbay build
 ```
 
-Never commit `SKILLSBAY_PRIVATE_KEY` or expose it in agent instructions.
+Never commit `.env`, `SKILLSBAY_PRIVATE_KEY`, or expose either in agent instructions.
 
 ## Commands
 

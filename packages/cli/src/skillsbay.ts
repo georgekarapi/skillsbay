@@ -23,7 +23,10 @@ import type { AgentType } from './types.ts';
 
 const isCancelled = (value: unknown): value is symbol => typeof value === 'symbol';
 
-export const apiUrl = process.env.SKILLSBAY_API_URL ?? 'https://skillsbay.dev';
+// This value is injected at build time by tsup. Do not read an API origin from
+// process.env here: a published CLI must always use the origin it was released
+// against.
+export const apiUrl = __SKILLSBAY_API_URL__;
 
 export function endpoint(path: string): string {
   return new URL(path, apiUrl).toString();
@@ -89,7 +92,10 @@ export async function resolveSkillsbaySkillId(source: string): Promise<string | 
     } catch (error) {
       if (error instanceof Error && error.message.startsWith('Skill "')) throw error;
       const detail = error instanceof Error ? error.message : String(error);
-      throw new Error(`Could not reach SkillsBay to resolve "${skillId}". Set SKILLSBAY_API_URL to a reachable SkillsBay API, or use an explicit Git URL for a repository install. (${detail})`);
+      throw new Error(
+        `Could not reach the SkillsBay API embedded in this CLI (${apiUrl}) to resolve "${skillId}". ` +
+          `Use an explicit Git URL for a repository install, or rebuild a local CLI with a valid SKILLSBAY_API_URL in .env. (${detail})`
+      );
     }
   }
 
