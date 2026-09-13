@@ -156,10 +156,12 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build CLI
-        run: pnpm --filter skillsbay build
+        run: |
+          test -n "$SKILLSBAY_API_URL" || { echo "npm environment variable SKILLSBAY_API_URL is required"; exit 1; }
+          pnpm --filter skillsbay build
         env:
-          # Embed the trusted production API origin in the published CLI.
-          SKILLSBAY_API_URL: https://skillsbay.dev
+          # Environment-scoped, build-time value embedded into the npm release.
+          SKILLSBAY_API_URL: ${{ vars.SKILLSBAY_API_URL }}
 
       - name: Confirm the CLI version is new
         working-directory: packages/cli

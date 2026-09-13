@@ -13,10 +13,9 @@ export type AuthorDashboardData = {
 
 type ApiListing = Omit<Skill, "rank" | "authorAddress" | "updatedAt"> & Partial<Pick<Skill, "rank" | "authorAddress" | "updatedAt" | "featured">>
 
-const apiBaseUrl = import.meta.env.VITE_SKILLSBAY_API_URL ?? ""
-
 export function endpoint(path: string) {
-  return apiBaseUrl ? new URL(path, apiBaseUrl).toString() : path
+  // The marketplace UI and API are served by the same Worker origin.
+  return path
 }
 
 function normalizeSkill(skill: ApiListing, index: number): Skill {

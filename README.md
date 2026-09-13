@@ -214,7 +214,7 @@ Merges to `main` run [`.github/workflows/deploy.yml`](.github/workflows/deploy.y
 
 The Worker is bound to `skillsbay.dev` as a Wrangler custom domain. Before the first production deployment, add and activate the `skillsbay.dev` zone in that same Cloudflare account.
 
-`PUBLIC_APP_ORIGIN` controls canonical and social URLs at Worker runtime. It is a public deployment setting, not a Vite build variable, so changing it does not require rebuilding the frontend.
+The Worker derives canonical and social URLs from the request origin, keeping the marketplace UI and API on the same deployment origin.
 
 When a merge changes `packages/cli`, the same workflow builds and publishes the `skillsbay` npm package with npm trusted publishing (GitHub OIDC). Bump `packages/cli/package.json` first; npm versions are immutable. The `npm` GitHub environment needs no npm token, but must be configured as the package's trusted publisher.
 

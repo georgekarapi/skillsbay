@@ -8,7 +8,7 @@ import { runAdd, parseAddOptions } from './add.ts';
 import { runList } from './list.ts';
 import { removeCommand, parseRemoveOptions } from './remove.ts';
 import { isRunningInAgent } from './detect-agent.ts';
-import { searchSkills, fetchSkillInfo, resolveSkillsbaySkillId, runSkillsbayAdd } from './skillsbay.ts';
+import { apiUrl, searchSkills, fetchSkillInfo, resolveSkillsbaySkillId, runSkillsbayAdd } from './skillsbay.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -77,7 +77,7 @@ function showBanner(): void {
   console.log();
   console.log(`${DIM}try:${RESET} npx skillsbay add karapi/skillsbay`);
   console.log();
-  console.log(`Explore skills at ${TEXT}https://skillsbay.dev${RESET}`);
+  console.log(`Explore skills at ${TEXT}${apiUrl}${RESET}`);
   console.log();
 }
 

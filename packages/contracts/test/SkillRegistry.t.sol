@@ -22,7 +22,7 @@ contract SkillRegistryTest is Test {
         usdc = new MockUSDC();
         registry = new SkillRegistry(address(usdc), registryOwner, treasury, recorder);
         vm.prank(author);
-        registry.registerSkill(skillId, PRICE, 1, "https://api.skillsbay.dev/v1/skills/thegraph/substreams-deployer");
+        registry.registerSkill(skillId, PRICE, 1, "https://skillsbay.dev/v1/skills/thegraph/substreams-deployer");
     }
 
     function testAssignsTheConfiguredInitialOwner() public view {

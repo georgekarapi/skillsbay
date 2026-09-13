@@ -21,13 +21,14 @@ For the current deployment, set the API origin in the shell that
 runs the CLI:
 
 ```bash
-export SKILLSBAY_API_URL=https://skillsbay.dev
+SKILLSBAY_API_URL is embedded when the CLI is built. Official releases use
+https://skillsbay.dev; do not set it at runtime.
 ```
 
 Check service readiness without buying anything:
 
 ```bash
-curl -fsS "$SKILLSBAY_API_URL/v1/health"
+curl -fsS https://skillsbay.dev/v1/health
 ```
 
 `graph: true` means marketplace rankings and analytics are supplied by the

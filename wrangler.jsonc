@@ -31,7 +31,6 @@
 	},
 	"vars": {
 		"APP_ENV": "production",
-		"PUBLIC_APP_ORIGIN": "https://skillsbay.dev",
 		"BASE_SEPOLIA_RPC_URL": "https://sepolia.base.org",
 		"GRAPH_API_URL": "https://api.studio.thegraph.com/query/89068/skillsbay-base-sepolia/v0.1.0",
 		"SKILL_REGISTRY_ADDRESS": "0x5b8A22f1dc11f38333469BEBd6d6Fe2852eA3f1D",

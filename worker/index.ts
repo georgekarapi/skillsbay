@@ -13,7 +13,6 @@ import { generateSkillOgPng, generateSkillOgSvg, escapeXml, type OgSkillData } f
 
 type Bindings = {
   APP_ENV: string
-  PUBLIC_APP_ORIGIN?: string
   DB: D1Database
   SKILL_BUNDLES: R2Bucket
   CHECKOUT_TOKENS?: KVNamespace
@@ -76,14 +75,7 @@ function isUsername(value: string) {
   return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value) && value.length >= 3 && value.length <= 32
 }
 
-function publicAppOrigin(env: Bindings, requestUrl: string) {
-  const configuredOrigin = env.PUBLIC_APP_ORIGIN?.trim()
-  if (configuredOrigin) {
-    try {
-      const origin = new URL(configuredOrigin).origin
-      if (origin.startsWith("https://") || origin.startsWith("http://")) return origin
-    } catch {}
-  }
+function publicAppOrigin(_env: Bindings, requestUrl: string) {
   return new URL(requestUrl).origin
 }
 

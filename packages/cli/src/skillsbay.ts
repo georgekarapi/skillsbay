@@ -28,12 +28,53 @@ const isCancelled = (value: unknown): value is symbol => typeof value === 'symbo
 // against.
 export const apiUrl = __SKILLSBAY_API_URL__;
 
+const configuredApiOrigin = new URL(apiUrl).origin;
+
 export function endpoint(path: string): string {
   return new URL(path, apiUrl).toString();
 }
 
 export function sleep(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+const READ_RETRY_DELAYS_MS = [250, 750] as const;
+
+/**
+ * Retry idempotent API reads when Node cannot establish a connection to the
+ * Worker. This is intentionally not used for payment or checkout-creation
+ * POSTs, which must not be repeated without an idempotency contract.
+ */
+export async function fetchApiRead(input: string): Promise<Response> {
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt <= READ_RETRY_DELAYS_MS.length; attempt++) {
+    try {
+      return await fetch(input);
+    } catch (error) {
+      lastError = error;
+      const delay = READ_RETRY_DELAYS_MS[attempt];
+      if (delay !== undefined) await sleep(delay);
+    }
+  }
+
+  throw lastError;
+}
+
+function describeNetworkError(error: unknown): string {
+  if (!(error instanceof Error)) return String(error);
+
+  const cause = error.cause;
+  const causes = cause instanceof AggregateError ? [...cause.errors] : [cause];
+  const codes = causes.flatMap((candidate) => {
+    if (typeof candidate !== 'object' || candidate === null || !('code' in candidate)) return [];
+    const code = (candidate as { code?: unknown }).code;
+    return typeof code === 'string' ? [code] : [];
+  });
+  if (codes.length > 0) {
+    return `${error.message} (${[...new Set(codes)].join(', ')})`;
+  }
+  return error.message;
 }
 
 export interface SkillInfo {
@@ -47,7 +88,7 @@ export interface SkillInfo {
 }
 
 export async function api<T = unknown>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(endpoint(path), init);
+  const response = init ? await fetch(endpoint(path), init) : await fetchApiRead(endpoint(path));
   if (!response.ok) {
     throw new Error(`${response.status} ${await response.text()}`);
   }
@@ -63,7 +104,7 @@ export async function resolveSkillsbaySkillId(source: string): Promise<string | 
   if (raw.startsWith('http://') || raw.startsWith('https://')) {
     try {
       const url = new URL(raw);
-      if (url.hostname === 'skillsbay.dev' || url.hostname.endsWith('.skillsbay.dev')) {
+      if (url.origin === configuredApiOrigin) {
         const parts = url.pathname.split('/').filter(Boolean);
         if (parts.length >= 2) {
           raw = `${parts[0]}/${parts[1]}`;
@@ -82,7 +123,9 @@ export async function resolveSkillsbaySkillId(source: string): Promise<string | 
   if (parts.length === 2 && parts[0] && parts[1]) {
     const skillId = `${parts[0]}/${parts[1]}`;
     try {
-      const response = await fetch(endpoint(`/v1/skills/${encodeURIComponent(parts[0])}/${encodeURIComponent(parts[1])}`));
+      const response = await fetchApiRead(
+        endpoint(`/v1/skills/${encodeURIComponent(parts[0])}/${encodeURIComponent(parts[1])}`)
+      );
       if (response.status === 404) {
         throw new Error(`Skill "${skillId}" was not found on SkillsBay. Use --fallback to install it directly from GitHub instead.`);
       }
@@ -91,10 +134,10 @@ export async function resolveSkillsbaySkillId(source: string): Promise<string | 
       return payload.data?.id ? skillId : null;
     } catch (error) {
       if (error instanceof Error && error.message.startsWith('Skill "')) throw error;
-      const detail = error instanceof Error ? error.message : String(error);
+      const detail = describeNetworkError(error);
       throw new Error(
         `Could not reach the SkillsBay API embedded in this CLI (${apiUrl}) to resolve "${skillId}". ` +
-          `Use an explicit Git URL for a repository install, or rebuild a local CLI with a valid SKILLSBAY_API_URL in .env. (${detail})`
+          `Use an explicit Git URL for a repository install while the network is unavailable. (${detail})`
       );
     }
   }
@@ -160,7 +203,7 @@ export async function completeBrowserCheckout(
 
   while (true) {
     await sleep(2000);
-    const response = await fetch(endpoint(`/v1/install-requests/${created.data.id}`));
+    const response = await fetchApiRead(endpoint(`/v1/install-requests/${created.data.id}`));
     if (response.status === 410) throw new Error('Browser checkout expired before payment was confirmed.');
     if (!response.ok) throw new Error(`${response.status} ${await response.text()}`);
 
