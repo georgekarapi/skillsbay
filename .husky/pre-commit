@@ -1,0 +1,20 @@
+#!/usr/bin/env sh
+
+set -eu
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+
+# Only bump for actual CLI source changes. A package.json-only commit can be
+# an intentional major/minor/manual version change and must remain untouched.
+cli_files="$(git diff --cached --name-only --diff-filter=ACMRTUXB -- packages/cli)"
+if [ -z "$cli_files" ] || ! printf '%s\n' "$cli_files" | grep -qv '^packages/cli/package.json$'; then
+  exit 0
+fi
+
+before="$(node -p 'require("./packages/cli/package.json").version')"
+npm --prefix packages/cli version patch --no-git-tag-version >/dev/null
+after="$(node -p 'require("./packages/cli/package.json").version')"
+
+git add packages/cli/package.json
+printf 'pre-commit: bumped skillsbay CLI %s -> %s\n' "$before" "$after"

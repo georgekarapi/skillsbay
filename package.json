@@ -15,7 +15,8 @@
     "deploy": "pnpm build && wrangler deploy",
     "cf-typegen": "wrangler types",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "prepare": "husky"
   },
   "dependencies": {
     "@skillsbay/shared": "workspace:*",
@@ -61,6 +62,7 @@
     "@vitejs/plugin-react": "^6.1.0",
     "@vitest/browser-playwright": "latest",
     "@vitest/coverage-v8": "latest",
+    "husky": "^9.1.7",
     "oxlint": "^1.79.0",
     "playwright": "latest",
     "storybook": "^10.6.0",

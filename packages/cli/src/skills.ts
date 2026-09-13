@@ -71,6 +71,33 @@ async function hasSkillMd(dir: string): Promise<boolean> {
   }
 }
 
+/**
+ * Resolve an explicitly requested repository subpath. Repositories commonly
+ * expose skills beneath a top-level `skills/` directory, while the CLI
+ * shorthand is typically written as `owner/repo/skill-name`. Prefer an exact
+ * path when it exists, then try that conventional container as a convenience.
+ */
+async function resolveSkillSearchPath(basePath: string, subpath?: string): Promise<string> {
+  if (!subpath) return basePath;
+
+  const exactPath = join(basePath, subpath);
+  try {
+    if ((await stat(exactPath)).isDirectory()) return exactPath;
+  } catch {
+    // Try the conventional skills container below.
+  }
+
+  const containedPath = join(basePath, 'skills', subpath);
+  try {
+    if ((await stat(containedPath)).isDirectory()) return containedPath;
+  } catch {
+    // Leave discovery on the exact path so its normal empty-result behavior
+    // remains unchanged for an invalid subpath.
+  }
+
+  return exactPath;
+}
+
 function warnSkippedSkill(skillMdPath: string, reason: string): void {
   console.warn(`⚠ Skipped ${sanitizeMetadata(skillMdPath)} — ${stripTerminalEscapes(reason)}`);
 }
@@ -191,7 +218,7 @@ export async function discoverSkills(
     );
   }
 
-  const searchPath = subpath ? join(basePath, subpath) : basePath;
+  const searchPath = await resolveSkillSearchPath(basePath, subpath);
 
   // Get plugin groupings to map skills to their parent plugin
   // We search for plugin definitions from the base search path

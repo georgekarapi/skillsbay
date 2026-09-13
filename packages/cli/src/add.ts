@@ -524,6 +524,8 @@ export interface AddOptions {
   global?: boolean;
   /** Bypass SkillsBay resolution and install an owner/repository source directly. */
   fallback?: boolean;
+  /** Replace an existing local skill with the same install target. */
+  force?: boolean;
   agent?: string[];
   yes?: boolean;
   skill?: string[];
@@ -2170,6 +2172,8 @@ export function parseAddOptions(args: string[]): {
 
     if (arg === '-g' || arg === '--global') {
       options.global = true;
+    } else if (arg === '-f' || arg === '--force') {
+      options.force = true;
     } else if (arg === '--fallback') {
       options.fallback = true;
     } else if (arg === '-y' || arg === '--yes') {

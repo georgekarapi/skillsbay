@@ -616,6 +616,12 @@ describe('shouldInstallInternalSkills', () => {
 });
 
 describe('parseAddOptions', () => {
+  it('should parse --force flag', () => {
+    const result = parseAddOptions(['source', '--force']);
+    expect(result.source).toEqual(['source']);
+    expect(result.options.force).toBe(true);
+  });
+
   it('should parse --all flag', () => {
     const result = parseAddOptions(['source', '--all']);
     expect(result.source).toEqual(['source']);

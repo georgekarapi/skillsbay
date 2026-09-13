@@ -39,8 +39,12 @@ jobs:
 
           echo "Syncing upstream files to packages/cli/src/..."
           # Sync all upstream src files while preserving our custom Skillsbay modules
+          # `add.ts` owns SkillsBay's marketplace routing and CLI-only options.
+          # Syncing the upstream version removes those integration points and
+          # leaves the branded CLI unable to typecheck.
           rsync -av \
             --exclude="cli.ts" \
+            --exclude="add.ts" \
             --exclude="skillsbay.ts" \
             --exclude="telemetry.ts" \
             /tmp/upstream-skills/src/ packages/cli/src/

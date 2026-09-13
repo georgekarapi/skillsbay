@@ -1,6 +1,6 @@
 {
   "name": "skillsbay",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Pay-per-skill package manager for AI agents",
   "repository": {
     "type": "git",
