@@ -31,6 +31,7 @@ import {
   publishBundle,
 } from "@/lib/marketplace-api";
 import { MarketplaceShell } from "@/components/templates/marketplace-shell";
+import { SkillSecurityScanDialog } from "@/components/organisms/skill-security-scan-dialog";
 import { baseNetwork } from "@/lib/base-network";
 import {
   createBundleReadAuthorizationMessage,
@@ -134,6 +135,7 @@ export function ManageSkillPage() {
   const [editMode, setEditMode] = useState(false);
   const [loadingEditor, setLoadingEditor] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [scanOpen, setScanOpen] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
   const [deactivated, setDeactivated] = useState(false);
   const registryAddress = import.meta.env.VITE_SKILL_REGISTRY_ADDRESS as
@@ -223,8 +225,29 @@ export function ManageSkillPage() {
     });
   }
 
-  async function save(event: FormEvent<HTMLFormElement>) {
+  function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!skill) return;
+    if (!author.authenticated) return author.login();
+    if (!canSave || !registryAddress) return;
+    try {
+      parseUsdc(price.trim());
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Invalid price.");
+      return;
+    }
+    if (!hasMarkdownChanges) {
+      void saveConfirmed();
+      return;
+    }
+    if (!markdown.startsWith("---")) {
+      toast.error("SKILL.md needs YAML frontmatter beginning with ---.");
+      return;
+    }
+    setScanOpen(true);
+  }
+
+  async function saveConfirmed() {
     if (!skill) return;
     if (!author.authenticated) return author.login();
     if (!canSave || !registryAddress) return;
@@ -647,6 +670,16 @@ export function ManageSkillPage() {
           </Card>
         </aside>
       </div>
+      <SkillSecurityScanDialog
+        markdown={markdown}
+        onOpenChange={setScanOpen}
+        onProceed={() => {
+          setScanOpen(false);
+          void saveConfirmed();
+        }}
+        open={scanOpen}
+        proceedLabel="Update skill"
+      />
     </MarketplaceShell>
   );
 }
