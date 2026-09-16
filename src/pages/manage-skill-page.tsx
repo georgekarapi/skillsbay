@@ -8,9 +8,10 @@ import {
   CircleDollarSign,
   Lock,
   Pencil,
+  Power,
   Save,
 } from "lucide-react";
-import { encodeFunctionData, keccak256, parseAbi, stringToHex } from "viem";
+import { createPublicClient, encodeFunctionData, http, keccak256, parseAbi, stringToHex } from "viem";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuthorAuth } from "@/components/providers/author-auth-context";
@@ -37,6 +38,7 @@ import {
 } from "@skillsbay/shared/publish-authorization";
 
 const registryAbi = parseAbi([
+  "function getSkill(bytes32 skillId) view returns ((address author, uint96 price, uint32 majorVersion, bool active, string metadataURI) skill)",
   "function updateSkill(bytes32 skillId, uint96 price, bool active, string metadataURI)",
 ]);
 
@@ -132,6 +134,8 @@ export function ManageSkillPage() {
   const [editMode, setEditMode] = useState(false);
   const [loadingEditor, setLoadingEditor] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deactivating, setDeactivating] = useState(false);
+  const [deactivated, setDeactivated] = useState(false);
   const registryAddress = import.meta.env.VITE_SKILL_REGISTRY_ADDRESS as
     | string
     | undefined;
@@ -155,6 +159,7 @@ export function ManageSkillPage() {
 
   useEffect(() => {
     if (!skill) return;
+    setDeactivated(false);
     const initial = skillMarkdown(skill.id);
     setPrice(skill.priceUsdc);
     setSavedMarkdown(initial);
@@ -188,7 +193,7 @@ export function ManageSkillPage() {
       setMarkdown(source);
       setEditMode(true);
     } catch (error) {
-      toast.error("Could not open the encrypted skill", {
+      toast.error("Could not open the private skill", {
         description:
           error instanceof Error ? error.message : "Please try again.",
       });
@@ -258,7 +263,7 @@ export function ManageSkillPage() {
       setSavedMarkdown(markdown);
       toast.success("Skill updated", {
         description: hasMarkdownChanges
-          ? "The updated encrypted SKILL.md is ready for new installs."
+          ? "The updated private SKILL.md is ready for new installs."
           : "Price was updated successfully.",
       });
     } catch (error) {
@@ -267,6 +272,50 @@ export function ManageSkillPage() {
       toast.error("Skill was not updated", { description });
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function deactivate() {
+    if (!skill) return;
+    if (!author.authenticated) return author.login();
+    if (!canSave || !registryAddress) return;
+    if (!window.confirm("Deactivate this skill? New purchases will stop, but existing purchase receipts and bundle access will remain.")) return;
+
+    try {
+      const skillHash = keccak256(stringToHex(skill.id));
+      const registry = createPublicClient({
+        chain: baseNetwork.chain,
+        transport: http(baseNetwork.rpcUrl),
+      });
+      const { price: livePrice } = await registry.readContract({
+        address: registryAddress as `0x${string}`,
+        abi: registryAbi,
+        functionName: "getSkill",
+        args: [skillHash],
+      });
+      const data = encodeFunctionData({
+        abi: registryAbi,
+        functionName: "updateSkill",
+        args: [skillHash, livePrice, false, `skillsbay://${skill.id}`],
+      });
+
+      setDeactivating(true);
+      const transaction = await author.sendTransaction!({
+        to: registryAddress,
+        data,
+        chainId: baseNetwork.chainId,
+      });
+      setDeactivated(true);
+      setEditMode(false);
+      toast.success("Skill deactivated", {
+        description: `${transaction.hash.slice(0, 10)}…${transaction.hash.slice(-8)} · new purchases are disabled.`,
+      });
+    } catch (error) {
+      toast.error("Skill was not deactivated", {
+        description: error instanceof Error ? error.message : "Please try again.",
+      });
+    } finally {
+      setDeactivating(false);
     }
   }
 
@@ -367,12 +416,27 @@ export function ManageSkillPage() {
             {skill.title}
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Manage your skill details and encrypted SKILL.md bundle.
+            Manage your skill details and private, entitlement-gated SKILL.md bundle.
           </p>
         </div>
-        <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
-          <Check className="size-3.5" /> Active
-        </span>
+        <div className="flex items-center gap-2">
+          <span className={`inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${deactivated ? "bg-muted text-muted-foreground" : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"}`}>
+            {deactivated ? <Power className="size-3.5" /> : <Check className="size-3.5" />}
+            {deactivated ? "Inactive" : "Active"}
+          </span>
+          {!deactivated && (
+            <Button
+              className="text-destructive hover:text-destructive"
+              disabled={deactivating || saving || (author.authenticated && !canSave)}
+              onClick={deactivate}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              <Power /> {deactivating ? "Deactivating…" : "Deactivate"}
+            </Button>
+          )}
+        </div>
       </div>
       <div className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_23rem]">
         <main className="grid gap-6">
@@ -385,7 +449,7 @@ export function ManageSkillPage() {
                     Current public metadata and delivery settings.
                   </CardDescription>
                 </div>
-                {!editMode && (
+                {!editMode && !deactivated && (
                   <Button disabled={loadingEditor} onClick={beginEditing}>
                     <Pencil />{" "}
                     {loadingEditor ? "Verifying author…" : "Edit skill"}
@@ -455,7 +519,7 @@ export function ManageSkillPage() {
                     <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-5">
                       <p className="text-xs text-muted-foreground">
                         {hasMarkdownChanges
-                          ? "Bundle changes will be encrypted after the on-chain update."
+                          ? "Bundle changes will be stored privately after the on-chain update."
                           : "No SKILL.md changes yet."}
                       </p>
                       <div className="flex gap-2">

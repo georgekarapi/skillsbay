@@ -99,7 +99,7 @@ different local skill version.
 
 Do not publish a skill on behalf of a user unless they request it. Authors use
 the Skillsbay web dashboard, sign in with Privy, claim a permanent username,
-register metadata on-chain, and sign the encrypted bundle upload. Skill
+register metadata on-chain, and sign the private bundle upload. Skill
 titles must use lowercase letters, numbers, and hyphens—no spaces. Successful
 purchases route 95% USDC directly to the author wallet and 5% to the platform
 treasury.

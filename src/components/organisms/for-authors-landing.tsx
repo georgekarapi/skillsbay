@@ -46,7 +46,7 @@ const SPECS = [
   { label: "Royalty split", value: "95% author / 5% protocol fee" },
   { label: "Settlement asset", value: "USDC on Base" },
   { label: "Access protocol", value: "HTTP 402 Payment Required (x402)" },
-  { label: "Payload delivery", value: "AES-GCM encrypted, receipt-verified" },
+  { label: "Payload delivery", value: "Private R2 delivery, receipt-verified" },
   { label: "Minimum price", value: "0.20 USDC" },
   { label: "Author identity", value: "Privy embedded wallet + handle" },
 ]

@@ -7,7 +7,7 @@ export type PublishAuthorization = {
 
 /**
  * A deliberately small, human-readable EIP-191 payload. It binds a Privy
- * embedded-wallet signature to exactly one encrypted SKILL.md upload.
+ * embedded-wallet signature to exactly one private SKILL.md upload.
  */
 export function createPublishAuthorizationMessage(input: PublishAuthorization) {
   return [
