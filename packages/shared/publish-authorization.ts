@@ -11,7 +11,7 @@ export type PublishAuthorization = {
  */
 export function createPublishAuthorizationMessage(input: PublishAuthorization) {
   return [
-    "SkillsBay publish authorization",
+    "Skillsbay publish authorization",
     `Skill: ${input.skillId}`,
     `Author: ${input.author.toLowerCase()}`,
     `Content SHA-256: ${input.contentSha256}`,
@@ -28,7 +28,7 @@ export type BundleReadAuthorization = {
 /** Lets a publisher retrieve only their own decrypted source bundle for editing. */
 export function createBundleReadAuthorizationMessage(input: BundleReadAuthorization) {
   return [
-    "SkillsBay bundle read authorization",
+    "Skillsbay bundle read authorization",
     `Skill: ${input.skillId}`,
     `Author: ${input.author.toLowerCase()}`,
     `Issued at: ${input.issuedAt}`,
@@ -45,7 +45,7 @@ export type InstallRequestAuthorization = {
 /** Proves that the wallet entitled to a bundle explicitly unlocks this one CLI install. */
 export function createInstallRequestAuthorizationMessage(input: InstallRequestAuthorization) {
   return [
-    "SkillsBay install authorization",
+    "Skillsbay install authorization",
     `Install request: ${input.installRequestId}`,
     `Skill: ${input.skillId}`,
     `Wallet: ${input.buyer.toLowerCase()}`,
@@ -59,10 +59,10 @@ export type UsernameAuthorization = {
   issuedAt: string
 }
 
-/** Binds the one-time SkillsBay publisher handle to its embedded-wallet owner. */
+/** Binds the one-time Skillsbay publisher handle to its embedded-wallet owner. */
 export function createUsernameAuthorizationMessage(input: UsernameAuthorization) {
   return [
-    "SkillsBay username authorization",
+    "Skillsbay username authorization",
     `Wallet: ${input.walletAddress.toLowerCase()}`,
     `Username: ${input.username.toLowerCase()}`,
     `Issued at: ${input.issuedAt}`,

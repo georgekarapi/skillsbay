@@ -11,9 +11,9 @@ export type PageSeoOptions = {
   jsonLd?: Record<string, unknown>
 }
 
-const DEFAULT_TITLE = "SkillsBay — The Agent Skill Marketplace"
+const DEFAULT_TITLE = "Skillsbay — Trusted Paid Agent Skills"
 const DEFAULT_DESCRIPTION =
-  "Discover, buy, and publish verified skills for AI agents. Run autonomous workflows with x402-enabled payments and instant CLI installation."
+  "Buy versioned private skills, verify the purchase on-chain, and install the unlocked release directly into your agent workspace."
 const DEFAULT_OG_IMAGE = "/skillsbay-og.png"
 
 function setMetaTag(selector: string, attributeName: string, attributeValue: string, content: string) {
@@ -70,7 +70,7 @@ export function usePageSeo(options: PageSeoOptions) {
     setLinkTag("canonical", canonical)
 
     // Open Graph
-    setMetaTag('meta[property="og:site_name"]', "property", "og:site_name", "SkillsBay")
+    setMetaTag('meta[property="og:site_name"]', "property", "og:site_name", "Skillsbay")
     setMetaTag('meta[property="og:type"]', "property", "og:type", ogType)
     setMetaTag('meta[property="og:title"]', "property", "og:title", title)
     setMetaTag('meta[property="og:description"]', "property", "og:description", description)

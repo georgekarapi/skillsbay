@@ -1,4 +1,4 @@
-name: Deploy SkillsBay
+name: Deploy Skillsbay
 
 on:
   push:
@@ -87,6 +87,10 @@ jobs:
     env:
       VITE_PRIVY_APP_ID: ${{ vars.VITE_PRIVY_APP_ID }}
       VITE_SKILL_REGISTRY_ADDRESS: ${{ vars.VITE_SKILL_REGISTRY_ADDRESS }}
+      VITE_BASE_CHAIN_ID: ${{ vars.VITE_BASE_CHAIN_ID }}
+      VITE_BASE_RPC_URL: ${{ vars.VITE_BASE_RPC_URL }}
+      VITE_USDC_ADDRESS: ${{ vars.VITE_USDC_ADDRESS }}
+      VITE_X402_NETWORK: ${{ vars.VITE_X402_NETWORK }}
 
     steps:
       - name: Check out source
@@ -110,6 +114,10 @@ jobs:
         run: |
           test -n "$VITE_PRIVY_APP_ID" || { echo "Set production variable VITE_PRIVY_APP_ID"; exit 1; }
           test -n "$VITE_SKILL_REGISTRY_ADDRESS" || { echo "Set production variable VITE_SKILL_REGISTRY_ADDRESS"; exit 1; }
+          test -n "$VITE_BASE_CHAIN_ID" || { echo "Set production variable VITE_BASE_CHAIN_ID"; exit 1; }
+          test -n "$VITE_BASE_RPC_URL" || { echo "Set production variable VITE_BASE_RPC_URL"; exit 1; }
+          test -n "$VITE_USDC_ADDRESS" || { echo "Set production variable VITE_USDC_ADDRESS"; exit 1; }
+          test -n "$VITE_X402_NETWORK" || { echo "Set production variable VITE_X402_NETWORK"; exit 1; }
 
       - name: Build Worker and marketplace
         run: pnpm build
@@ -158,10 +166,12 @@ jobs:
       - name: Build CLI
         run: |
           test -n "$SKILLSBAY_API_URL" || { echo "npm environment variable SKILLSBAY_API_URL is required"; exit 1; }
+          test -n "$SKILLSBAY_X402_NETWORK" || { echo "npm environment variable SKILLSBAY_X402_NETWORK is required"; exit 1; }
           pnpm --filter skillsbay build
         env:
           # Environment-scoped, build-time value embedded into the npm release.
           SKILLSBAY_API_URL: ${{ vars.SKILLSBAY_API_URL }}
+          SKILLSBAY_X402_NETWORK: ${{ vars.SKILLSBAY_X402_NETWORK }}
 
       - name: Confirm the CLI version is new
         working-directory: packages/cli

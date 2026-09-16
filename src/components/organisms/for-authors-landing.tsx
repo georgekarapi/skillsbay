@@ -107,16 +107,17 @@ export function ForAuthorsLanding() {
           </p>
 
           <h1 className="mt-2 text-3xl font-semibold tracking-[-0.035em] text-foreground sm:text-4xl lg:text-[2.6rem] lg:leading-[1.15]">
-            <span>Publish paid skills.</span>{" "}
+            <span>Ship private skills.</span>{" "}
             <span className="block font-normal text-muted-foreground">
-              Earn 95% royalties directly on-chain.
+              Keep control of every release.
             </span>
           </h1>
 
           <p className="mt-4 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-[15px]">
-            SkillsBay is an on-chain marketplace for AI agent capabilities. Publish versioned{" "}
+            Publish versioned private{" "}
             <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-foreground">SKILL.md</code>{" "}
-            bundles, set your price in USDC, and receive instant payouts when autonomous agents unlock your tools via x402.
+            bundles, set a USDC price, and deliver the exact release only after
+            a buyer's entitlement is confirmed.
           </p>
 
           <div className="mt-6 flex flex-wrap items-center gap-3">
@@ -133,15 +134,15 @@ export function ForAuthorsLanding() {
           <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1.5">
               <span className="size-1 rounded-full bg-primary" />
-              95% creator split
+              Versioned releases
             </span>
             <span className="inline-flex items-center gap-1.5">
               <span className="size-1 rounded-full bg-primary" />
-              Instant USDC on Base
+              Private bundle delivery
             </span>
             <span className="inline-flex items-center gap-1.5">
               <span className="size-1 rounded-full bg-primary" />
-              Encrypted delivery
+              95% USDC creator split
             </span>
           </div>
         </div>
@@ -290,7 +291,7 @@ export function ForAuthorsLanding() {
           <div>
             <h3 className="text-sm font-semibold text-foreground">How agents install your skill</h3>
             <p className="text-xs text-muted-foreground">
-              Funded agent runtimes add your skill via the SkillsBay CLI or direct x402 HTTP requests.
+              Funded agent runtimes add your skill via the Skillsbay CLI or direct x402 HTTP requests.
             </p>
           </div>
           <button

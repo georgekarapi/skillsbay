@@ -4,7 +4,7 @@ pragma solidity ^0.8.28;
 import {Script} from "forge-std/Script.sol";
 import {SkillRegistry} from "../src/SkillRegistry.sol";
 
-/// @notice Deploys SkillsBay's registry with production addresses supplied at
+/// @notice Deploys Skillsbay's registry with production addresses supplied at
 /// runtime. Nothing network-specific is baked into bytecode or source.
 contract DeploySkillRegistry is Script {
     uint256 internal constant BASE_MAINNET_CHAIN_ID = 8453;

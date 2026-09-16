@@ -4,7 +4,7 @@ export interface BrandMarkProps extends ImgHTMLAttributes<HTMLImageElement> {}
 
 export function BrandMark({
   className = "size-7",
-  alt = "SkillsBay Mark",
+  alt = "Skillsbay Mark",
   ...props
 }: BrandMarkProps) {
   return (

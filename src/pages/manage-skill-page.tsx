@@ -30,6 +30,7 @@ import {
   publishBundle,
 } from "@/lib/marketplace-api";
 import { MarketplaceShell } from "@/components/templates/marketplace-shell";
+import { baseNetwork } from "@/lib/base-network";
 import {
   createBundleReadAuthorizationMessage,
   createPublishAuthorizationMessage,
@@ -248,7 +249,7 @@ export function ManageSkillPage() {
       const transaction = await author.sendTransaction!({
         to: registryAddress,
         data,
-        chainId: 84532,
+        chainId: baseNetwork.chainId,
       });
       toast.success("Update submitted", {
         description: `${transaction.hash.slice(0, 10)}…${transaction.hash.slice(-8)}`,

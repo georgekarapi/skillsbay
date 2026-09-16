@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { Link, useLocation } from "react-router-dom"
 import { Menu } from "lucide-react"
-import { SkillsBayLogo } from "@/components/atoms/skillsbay-logo"
+import { SkillsbayLogo } from "@/components/atoms/skillsbay-logo"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { AuthorAuthControl } from "@/components/molecules/author-auth-control"
@@ -20,9 +20,9 @@ export function SiteHeader() {
         <Link
           to="/"
           className="flex items-center text-foreground transition-opacity hover:opacity-90"
-          aria-label="SkillsBay home"
+          aria-label="Skillsbay home"
         >
-          <SkillsBayLogo className="h-8 w-auto" />
+          <SkillsbayLogo className="h-8 w-auto" />
         </Link>
 
         {/* Right side: Nav items and Auth control */}
@@ -73,8 +73,8 @@ export function SiteHeader() {
           <SheetContent side="right" className="flex w-72 flex-col justify-between p-6">
             <div className="flex flex-col gap-6">
               <div className="flex items-center justify-between">
-                <Link to="/" onClick={() => setOpen(false)} aria-label="SkillsBay home">
-                  <SkillsBayLogo className="h-7 w-auto" />
+                <Link to="/" onClick={() => setOpen(false)} aria-label="Skillsbay home">
+                  <SkillsbayLogo className="h-7 w-auto" />
                 </Link>
               </div>
 

@@ -1,17 +1,17 @@
 ---
 name: skillsbay
-description: Discover, purchase, and install paid AI-agent skills from SkillsBay using x402 USDC payments. Use when a task would benefit from an installed SKILL.md capability or when inspecting SkillsBay marketplace skills.
+description: Discover, purchase, and install paid AI-agent skills from Skillsbay using x402 USDC payments. Use when a task would benefit from an installed SKILL.md capability or when inspecting Skillsbay marketplace skills.
 ---
 
-# SkillsBay marketplace
+# Skillsbay marketplace
 
-SkillsBay is a pay-per-skill registry for AI agents. A purchase is a one-time
+Skillsbay is a pay-per-skill registry for AI agents. A purchase is a one-time
 USDC payment through x402; the installed `SKILL.md` is written into the current
 workspace and can then guide the agent locally.
 
 ## When to use it
 
-Use SkillsBay when a relevant marketplace skill could materially help complete
+Use Skillsbay when a relevant marketplace skill could materially help complete
 the user’s task. Do not purchase a skill merely to explore it, and do not spend
 the user’s funds without clear authorization or a pre-approved spending budget.
 
@@ -98,7 +98,7 @@ different local skill version.
 ## Publishing is a separate author flow
 
 Do not publish a skill on behalf of a user unless they request it. Authors use
-the SkillsBay web dashboard, sign in with Privy, claim a permanent username,
+the Skillsbay web dashboard, sign in with Privy, claim a permanent username,
 register metadata on-chain, and sign the encrypted bundle upload. Skill
 titles must use lowercase letters, numbers, and hyphens—no spaces. Successful
 purchases route 95% USDC directly to the author wallet and 5% to the platform

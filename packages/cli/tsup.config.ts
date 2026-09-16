@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const apiUrlKey = 'SKILLSBAY_API_URL';
+const x402NetworkKey = 'SKILLSBAY_X402_NETWORK';
 
 function readDotEnvValue(path: string, key: string): string | undefined {
   if (!existsSync(path)) return undefined;
@@ -27,6 +28,13 @@ const configuredApiUrl =
   'https://skillsbay.dev';
 
 const apiUrl = new URL(configuredApiUrl).origin;
+const x402Network = process.env[x402NetworkKey] ??
+  readDotEnvValue(resolve(import.meta.dirname, '../../.env'), x402NetworkKey) ??
+  'eip155:84532';
+
+if (!['eip155:84532', 'eip155:8453'].includes(x402Network)) {
+  throw new Error(`${x402NetworkKey} must be eip155:84532 or eip155:8453`);
+}
 
 export default defineConfig({
   entry: {
@@ -39,5 +47,6 @@ export default defineConfig({
   dts: false,
   define: {
     __SKILLSBAY_API_URL__: JSON.stringify(apiUrl),
+    __SKILLSBAY_X402_NETWORK__: JSON.stringify(x402Network),
   },
 });

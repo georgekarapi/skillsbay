@@ -522,7 +522,7 @@ setVersion(version);
 
 export interface AddOptions {
   global?: boolean;
-  /** Bypass SkillsBay resolution and install an owner/repository source directly. */
+  /** Bypass Skillsbay resolution and install an owner/repository source directly. */
   fallback?: boolean;
   /** Replace an existing local skill with the same install target. */
   force?: boolean;

@@ -1,15 +1,15 @@
 import type { ImgHTMLAttributes } from "react"
 
-export interface SkillsBayLogoProps extends ImgHTMLAttributes<HTMLImageElement> {
+export interface SkillsbayLogoProps extends ImgHTMLAttributes<HTMLImageElement> {
   variant?: "default" | "dark" | "light"
 }
 
-export function SkillsBayLogo({
+export function SkillsbayLogo({
   className = "h-8 w-auto",
-  alt = "SkillsBay",
+  alt = "Skillsbay",
   variant,
   ...props
-}: SkillsBayLogoProps) {
+}: SkillsbayLogoProps) {
   if (variant === "dark") {
     return (
       <img

@@ -9,7 +9,6 @@ import {
   parseAbi,
   stringToHex,
 } from "viem";
-import { baseSepolia } from "viem/chains";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuthorAuth } from "@/components/providers/author-auth-context";
@@ -38,6 +37,7 @@ import {
 } from "@/components/ui/select";
 import { SKILL_CATEGORIES } from "@/types/marketplace";
 import { createPublishAuthorizationMessage } from "@skillsbay/shared/publish-authorization";
+import { baseNetwork } from "@/lib/base-network";
 
 const registryAbi = parseAbi([
   "function registerSkill(bytes32 skillId, uint96 price, uint32 majorVersion, string metadataURI)",
@@ -227,23 +227,21 @@ export function PublishSkillPage() {
       const transaction = await author.sendTransaction!({
         to: registryAddress,
         data,
-        chainId: 84532,
+        chainId: baseNetwork.chainId,
       });
       toast.success("Registration submitted", {
         description: `${transaction.hash.slice(0, 10)}…${transaction.hash.slice(-8)}`,
       });
       const confirmationClient = createPublicClient({
-        chain: baseSepolia,
-        transport: http(
-          import.meta.env.VITE_BASE_SEPOLIA_RPC_URL || "https://sepolia.base.org",
-        ),
+        chain: baseNetwork.chain,
+        transport: http(baseNetwork.rpcUrl),
       });
       const receipt = await confirmationClient.waitForTransactionReceipt({
         hash: transaction.hash,
         confirmations: 1,
       });
       if (receipt.status === "reverted") {
-        throw new Error("The registry transaction reverted on Base Sepolia.");
+        throw new Error(`The registry transaction reverted on ${baseNetwork.name}.`);
       }
       await uploadAfterConfirmation({
         skillId,
@@ -294,7 +292,7 @@ export function PublishSkillPage() {
         </h1>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
           Your embedded wallet registers metadata on-chain, then signs the
-          encrypted bundle upload to SkillsBay.
+          encrypted bundle upload to Skillsbay.
         </p>
         <Card className="mt-7">
           <CardHeader>

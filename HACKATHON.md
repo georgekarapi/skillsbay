@@ -1,10 +1,10 @@
-# SkillsBay hackathon submission guide
+# Skillsbay hackathon submission guide
 
-SkillsBay is a reusable, paid `SKILL.md` distribution layer for AI agents. The demo is designed for the **The Graph — Best AI Tooling or AI Use Case (From Scratch)** and **Privy — Best financial flow** tracks.
+Skillsbay is a reusable, paid `SKILL.md` distribution layer for AI agents. The demo is designed for the **The Graph — Best AI Tooling or AI Use Case (From Scratch)** and **Privy — Best financial flow** tracks.
 
 ## Partner use cases
 
-| Partner | SkillsBay use case | Demo proof |
+| Partner | Skillsbay use case | Demo proof |
 | --- | --- | --- |
 | Base | Base is the settlement network for skill registration, purchase receipts, and direct USDC author/treasury splits. | Publish a skill and complete a purchase; show the registration and payment receipt on Base Sepolia. |
 | The Graph | The Graph indexes skills and purchases for marketplace discovery, creator analytics, and live sales data. | Complete an install, then refresh the marketplace and author dashboard to show the indexed sale and earnings. |

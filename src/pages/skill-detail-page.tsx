@@ -22,7 +22,6 @@ import {
   http,
   parseAbi,
 } from "viem"
-import { baseSepolia } from "viem/chains"
 import { Link, useParams, useSearchParams } from "react-router-dom"
 import { toast } from "sonner"
 import { wrapFetchWithPayment, x402Client } from "@x402/fetch"
@@ -53,12 +52,10 @@ import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { MarketplaceShell } from "@/components/templates/marketplace-shell"
 import { usePageSeo } from "@/hooks/use-page-seo"
+import { baseNetwork } from "@/lib/base-network"
 
 const usdcTransferAbi = parseAbi(["function transfer(address to, uint256 value) returns (bool)"])
 const usdcBalanceAbi = parseAbi(["function balanceOf(address account) view returns (uint256)"])
-const baseSepoliaUsdc = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
-const BASE_SEPOLIA_CHAIN_ID = 84532
-const BASE_SEPOLIA_HEX = "0x14a34"
 
 type Eip1193Provider = {
   request(args: { method: string; params?: unknown[] }): Promise<unknown>
@@ -108,9 +105,9 @@ export function SkillDetailPage() {
 
   usePageSeo({
     title: skill
-      ? `${skill.title} by ${skill.author} (${skill.namespace}/${skill.slug}) – SkillsBay`
-      : "Loading skill… – SkillsBay",
-    description: skill ? skill.summary : "A verified agent skill on SkillsBay.",
+      ? `${skill.title} by ${skill.author} (${skill.namespace}/${skill.slug}) – Skillsbay`
+      : "Loading skill… – Skillsbay",
+    description: skill ? skill.summary : "A protected agent skill on Skillsbay.",
     canonical: skill ? `/${skill.namespace}/${skill.slug}` : undefined,
     ogType: "article",
     ogImage: skill ? `/v1/skills/${skill.namespace}/${skill.slug}/og.png` : undefined,
@@ -196,14 +193,18 @@ function SkillDetails({ skill }: { skill: Skill }) {
         </div>
         <Separator className="my-8" />
         <section>
-          <h2 className="text-lg font-semibold">Verified marketplace bundle</h2>
+          <h2 className="text-lg font-semibold">Protected marketplace bundle</h2>
           <div className="mt-3 grid gap-3 text-sm leading-6 text-muted-foreground">
             <p>
-              This skill is registered and verified. Its private bundle is served only after a successful
-              entitlement check.
+              This bundle is registered to its publisher and served only after a
+              successful purchase entitlement check.
             </p>
             <p>
               After payment, the CLI writes the publisher’s `SKILL.md` into your local agent workspace.
+            </p>
+            <p>
+              Skillsbay verifies registration and purchase access, not a skill’s
+              safety or fitness for every environment. Review a skill before use.
             </p>
           </div>
         </section>
@@ -446,20 +447,20 @@ function BrowserCheckout({ skill }: { skill: Skill }) {
   const browserUsdcQuery = useQuery({
     queryKey: ["browser-usdc-balance", browserAddress, chainId],
     queryFn: async () => {
-      if (!browserAddress || chainId !== BASE_SEPOLIA_CHAIN_ID) return null
+      if (!browserAddress || chainId !== baseNetwork.chainId) return null
       const client = createPublicClient({
-        chain: baseSepolia,
-        transport: http(import.meta.env.VITE_BASE_SEPOLIA_RPC_URL || "https://sepolia.base.org"),
+        chain: baseNetwork.chain,
+        transport: http(baseNetwork.rpcUrl),
       })
       const bal = await client.readContract({
-        address: baseSepoliaUsdc as `0x${string}`,
+        address: baseNetwork.usdcAddress,
         abi: usdcBalanceAbi,
         functionName: "balanceOf",
         args: [browserAddress as `0x${string}`],
       })
       return (Number(bal) / 1_000_000).toFixed(2)
     },
-    enabled: Boolean(browserAddress && chainId === BASE_SEPOLIA_CHAIN_ID),
+    enabled: Boolean(browserAddress && chainId === baseNetwork.chainId),
     staleTime: 10_000,
   })
 
@@ -522,17 +523,17 @@ function BrowserCheckout({ skill }: { skill: Skill }) {
     }
   }
 
-  async function switchToBaseSepolia() {
+  async function switchToBaseNetwork() {
     if (!browserProvider) return
     setSwitchingNetwork(true)
     try {
       const eth = browserProvider
       await eth.request({
         method: "wallet_switchEthereumChain",
-        params: [{ chainId: BASE_SEPOLIA_HEX }],
+        params: [{ chainId: baseNetwork.chainHex }],
       })
-      setChainId(BASE_SEPOLIA_CHAIN_ID)
-      toast.success("Switched to Base Sepolia")
+      setChainId(baseNetwork.chainId)
+      toast.success(`Switched to ${baseNetwork.name}`)
     } catch (switchError: unknown) {
       const err = switchError as { code?: number; message?: string }
       if (err?.code === 4902 || String(err?.message).includes("Unrecognized chain")) {
@@ -542,16 +543,16 @@ function BrowserCheckout({ skill }: { skill: Skill }) {
             method: "wallet_addEthereumChain",
             params: [
               {
-                chainId: BASE_SEPOLIA_HEX,
-                chainName: "Base Sepolia",
+                chainId: baseNetwork.chainHex,
+                chainName: baseNetwork.name,
                 nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
-                rpcUrls: ["https://sepolia.base.org"],
-                blockExplorerUrls: ["https://sepolia.basescan.org"],
+                rpcUrls: [baseNetwork.rpcUrl],
+                blockExplorerUrls: [baseNetwork.explorerUrl],
               },
             ],
           })
-          setChainId(BASE_SEPOLIA_CHAIN_ID)
-          toast.success("Base Sepolia added and switched")
+          setChainId(baseNetwork.chainId)
+          toast.success(`${baseNetwork.name} added and switched`)
         } catch (addError) {
           toast.error("Could not add Base Sepolia network", {
             description: addError instanceof Error ? addError.message : String(addError),
@@ -559,7 +560,7 @@ function BrowserCheckout({ skill }: { skill: Skill }) {
         }
       } else {
         toast.error("Could not switch network", {
-          description: err?.message || "Please switch to Base Sepolia in your wallet.",
+          description: err?.message || `Please switch to ${baseNetwork.name} in your wallet.`,
         })
       }
     } finally {
@@ -571,7 +572,7 @@ function BrowserCheckout({ skill }: { skill: Skill }) {
     if (!browserAddress || !browserProvider || !installRequestId || installRequestId === "1") return
     try {
       const eth = browserProvider
-      const walletClient = createWalletClient({ chain: baseSepolia, transport: custom(eth) })
+      const walletClient = createWalletClient({ chain: baseNetwork.chain, transport: custom(eth) })
       await completeInstallRequest({
         id: installRequestId,
         skillId: skill.id,
@@ -597,8 +598,8 @@ function BrowserCheckout({ skill }: { skill: Skill }) {
     if (!browserAddress) {
       return connectBrowserWallet()
     }
-    if (chainId !== BASE_SEPOLIA_CHAIN_ID) {
-      return switchToBaseSepolia()
+    if (chainId !== baseNetwork.chainId) {
+      return switchToBaseNetwork()
     }
 
     const alreadyPurchased =
@@ -617,10 +618,10 @@ function BrowserCheckout({ skill }: { skill: Skill }) {
     setX402Step("signing")
     try {
       const eth = browserProvider
-      const walletClient = createWalletClient({ chain: baseSepolia, transport: custom(eth) })
+      const walletClient = createWalletClient({ chain: baseNetwork.chain, transport: custom(eth) })
       const publicClient = createPublicClient({
-        chain: baseSepolia,
-        transport: http(import.meta.env.VITE_BASE_SEPOLIA_RPC_URL || "https://sepolia.base.org"),
+        chain: baseNetwork.chain,
+        transport: http(baseNetwork.rpcUrl),
       })
 
       const signer = toClientEvmSigner(
@@ -643,7 +644,7 @@ function BrowserCheckout({ skill }: { skill: Skill }) {
       const client = new x402Client()
       registerExactEvmScheme(client, {
         signer,
-        networks: ["eip155:84532"],
+        networks: [baseNetwork.x402Network],
       })
 
       setX402Step("settling")
@@ -671,7 +672,7 @@ function BrowserCheckout({ skill }: { skill: Skill }) {
         })
       } else {
         toast.success("Purchase successful!", {
-          description: "USDC settled via x402 and access recorded on Base Sepolia.",
+          description: `USDC settled via x402 and access recorded on ${baseNetwork.name}.`,
         })
       }
     } catch (err: unknown) {
@@ -696,7 +697,7 @@ function BrowserCheckout({ skill }: { skill: Skill }) {
     sessionStorage.removeItem(pendingPaymentKey)
     setPendingTransactionHash(null)
     toast.success("Purchase confirmed", {
-      description: "Your SkillsBay entitlement is now recorded.",
+      description: "Your Skillsbay entitlement is now recorded.",
     })
     setCheckoutOpen(false)
   }
@@ -744,9 +745,9 @@ function BrowserCheckout({ skill }: { skill: Skill }) {
         args: [registryAddress as `0x${string}`, parseUsdc(skill.priceUsdc)],
       })
       const transaction = await author.sendTransaction({
-        to: baseSepoliaUsdc,
+        to: baseNetwork.usdcAddress,
         data,
-        chainId: 84532,
+        chainId: baseNetwork.chainId,
       })
       sessionStorage.setItem(pendingPaymentKey, transaction.hash)
       setPendingTransactionHash(transaction.hash)
@@ -766,7 +767,7 @@ function BrowserCheckout({ skill }: { skill: Skill }) {
 
   // Derived state for browser wallet
   const browserOwned = browserPurchaseAccess.data === true
-  const isWrongChain = Boolean(browserAddress && chainId !== BASE_SEPOLIA_CHAIN_ID)
+  const isWrongChain = Boolean(browserAddress && chainId !== baseNetwork.chainId)
   const balanceVal = browserUsdcQuery.data ? parseFloat(browserUsdcQuery.data) : null
   const priceVal = parseFloat(skill.priceUsdc)
   const isInsufficientBalance = Boolean(balanceVal !== null && balanceVal < priceVal)
@@ -783,7 +784,7 @@ function BrowserCheckout({ skill }: { skill: Skill }) {
           <>
             <DialogHeader>
               <DialogTitle>Verifying checkout session…</DialogTitle>
-              <DialogDescription>Checking session token with SkillsBay</DialogDescription>
+              <DialogDescription>Checking session token with Skillsbay</DialogDescription>
             </DialogHeader>
             <div className="flex flex-col items-center justify-center py-10 gap-3">
               <Loader2 className="size-8 animate-spin text-primary" />
@@ -1082,17 +1083,17 @@ function BrowserCheckout({ skill }: { skill: Skill }) {
                         size="sm"
                         variant="destructive"
                         className="h-6 text-[11px] px-2"
-                        onClick={switchToBaseSepolia}
+                        onClick={switchToBaseNetwork}
                         disabled={switchingNetwork}
                       >
-                        {switchingNetwork ? "Switching…" : "Switch to Base Sepolia"}
+                        {switchingNetwork ? "Switching…" : `Switch to ${baseNetwork.name}`}
                       </Button>
                     ) : (
                       <Badge
                         variant="secondary"
                         className="text-[10px] text-emerald-600 bg-emerald-500/10 font-normal"
                       >
-                        Base Sepolia
+                        {baseNetwork.name}
                       </Badge>
                     )}
                   </div>
@@ -1118,14 +1119,14 @@ function BrowserCheckout({ skill }: { skill: Skill }) {
                   <ShieldCheck className="size-4 text-emerald-500 shrink-0" />
                   <span>
                     Gasless HTTP 402 payment: Sign a USDC permit in your wallet. Settlement is
-                    handled automatically on Base Sepolia.
+                    handled automatically on {baseNetwork.name}.
                   </span>
                 </div>
 
                 {/* Action button */}
                 {isWrongChain ? (
                   <Button
-                    onClick={switchToBaseSepolia}
+                    onClick={switchToBaseNetwork}
                     disabled={switchingNetwork}
                     className="w-full"
                   >
@@ -1134,7 +1135,7 @@ function BrowserCheckout({ skill }: { skill: Skill }) {
                         <Loader2 className="size-4 animate-spin mr-2" /> Switching Network…
                       </>
                     ) : (
-                      "Switch to Base Sepolia to Pay"
+                      `Switch to ${baseNetwork.name} to Pay`
                     )}
                   </Button>
                 ) : browserOwned && installRequestId && installRequestId !== "1" ? (

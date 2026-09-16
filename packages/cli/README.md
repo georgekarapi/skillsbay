@@ -1,6 +1,6 @@
-# SkillsBay CLI
+# Skillsbay CLI
 
-Install paid AI-agent skills with a single command. SkillsBay verifies the
+Install paid AI-agent skills with a single command. Skillsbay verifies the
 purchase, unlocks the private `SKILL.md`, and installs it for your local agent.
 
 ```bash
@@ -33,7 +33,7 @@ Skills are installed in the current workspace, preferring
 
 ## GitHub fallback
 
-Bare `publisher/skill` identifiers are always resolved through SkillsBay to
+Bare `publisher/skill` identifiers are always resolved through Skillsbay to
 avoid accidentally bypassing payment. To deliberately use the upstream
 GitHub installer instead, pass `--fallback`:
 

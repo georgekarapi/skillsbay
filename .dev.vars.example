@@ -15,10 +15,10 @@ X402_RECIPIENT_ADDRESS=
 
 # Required by the post-settlement Circle Paymaster recorder. The recorder key
 # controls an EIP-7702 smart account, which pays Base Sepolia gas in USDC.
-# A public Base Sepolia RPC default is declared in wrangler.jsonc. Set this only
-# to override it locally or use a provider endpoint (keep provider URLs with
-# embedded API keys secret).
-BASE_SEPOLIA_RPC_URL=
+# Base network configuration. Sepolia is the safe local default; set these to
+# the Base-mainnet values from .env.mainnet for a mainnet rehearsal.
+BASE_CHAIN_ID=84532
+BASE_RPC_URL=https://sepolia.base.org
 RECORDER_PRIVATE_KEY=
 # Optional overrides. The shown values are the Circle Paymaster v0.8 and
 # Circle test USDC defaults for Base Sepolia. A Pimlico public bundler is used
@@ -28,3 +28,8 @@ BUNDLER_RPC_URL=
 CIRCLE_PAYMASTER_ADDRESS=0x3BA9A96eE3eFf3A69E2B18886AcF52027EFF8966
 CIRCLE_PAYMASTER_PERMIT_USDC=10000000
 USDC_ADDRESS=0x036CbD53842c5426634e7929541eC2318f3dCF7e
+X402_NETWORK=eip155:84532
+X402_FACILITATOR_URL=https://x402.org/facilitator
+# A public Pimlico endpoint is suitable for local testnet work. Configure a
+# dedicated endpoint before sustained mainnet traffic.
+BUNDLER_RPC_URL=https://public.pimlico.io/v2/84532/rpc

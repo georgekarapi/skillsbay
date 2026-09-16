@@ -139,10 +139,10 @@ export function DocsPage() {
           <span className="text-xs text-muted-foreground">v0.2 · x402 Live</span>
         </div>
         <h1 className="mt-3 text-3xl sm:text-4xl font-semibold tracking-[-0.04em]">
-          SkillsBay Architecture & Integration Guide
+          Skillsbay Architecture & Integration Guide
         </h1>
         <p className="mt-3 max-w-3xl text-base text-muted-foreground leading-relaxed">
-          Everything you need to know about SkillsBay — how agent payments work via HTTP 402, smart
+          Everything you need to know about Skillsbay — how agent payments work via HTTP 402, smart
           contract registry settlement, agent runtime integrations, and publishing paid private skills.
         </p>
       </div>
@@ -204,20 +204,20 @@ export function DocsPage() {
             <div className="border-b pb-4">
               <h2 className="text-2xl font-semibold tracking-tight">1. Overview</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                What is SkillsBay and why do autonomous AI agents need paid package management?
+                What is Skillsbay and why do autonomous AI agents need paid package management?
               </p>
             </div>
 
             <div className="prose prose-neutral dark:prose-invert max-w-none text-sm leading-relaxed text-muted-foreground space-y-4">
               <p>
-                <strong className="text-foreground">SkillsBay</strong> is a Web3-native package manager
+                <strong className="text-foreground">Skillsbay</strong> is a Web3-native package manager
                 and marketplace specifically built for <strong className="text-foreground">paid AI agent skills</strong>.
                 AI coding agents (like Claude Code, Cursor, Codex, OpenClaw, and Gemini CLI) enhance their capabilities
                 using structured <code className="text-foreground font-mono">SKILL.md</code> instruction files, APIs, and workflows.
               </p>
               <p>
-                Until SkillsBay, skill distribution was either purely open source or locked behind complex manual subscriptions.
-                SkillsBay bridges autonomous agents with crypto-native payments:
+                Until Skillsbay, skill distribution was either purely open source or locked behind complex manual subscriptions.
+                Skillsbay bridges autonomous agents with crypto-native payments:
               </p>
             </div>
 
@@ -275,7 +275,7 @@ export function DocsPage() {
                   <h4 className="font-semibold text-foreground">Author Publishes a Skill</h4>
                   <p className="text-xs text-muted-foreground mt-1">
                     An author signs in with Privy, claims their permanent publisher username, calls{" "}
-                    a skill is registered on-chain, and its private <code className="text-foreground font-mono">SKILL.md</code> bundle is published to SkillsBay.
+                    a skill is registered on-chain, and its private <code className="text-foreground font-mono">SKILL.md</code> bundle is published to Skillsbay.
                   </p>
                 </li>
 
@@ -286,7 +286,7 @@ export function DocsPage() {
                   <h4 className="font-semibold text-foreground">Agent Requests Content (HTTP 402)</h4>
                   <p className="text-xs text-muted-foreground mt-1">
                     The agent or developer executes <code className="text-foreground font-mono"><CommandText text="npx skillsbay add <author>/<skill>" /></code>.
-                    SkillsBay presents an HTTP 402 challenge with the required USDC payment details.
+                    Skillsbay presents an HTTP 402 challenge with the required USDC payment details.
                   </p>
                 </li>
 
@@ -317,7 +317,7 @@ export function DocsPage() {
                   </span>
                   <h4 className="font-semibold text-foreground">Private Delivery & Native Agent Placement</h4>
                   <p className="text-xs text-muted-foreground mt-1">
-                    SkillsBay verifies entitlement and delivers the private bundle to the CLI.
+                    Skillsbay verifies entitlement and delivers the private bundle to the CLI.
                     The CLI automatically places the skill into detected agent directories (e.g., <code className="text-foreground font-mono">.agents/skills/</code> or <code className="text-foreground font-mono">.claude/skills/</code>).
                   </p>
                 </li>
@@ -332,13 +332,13 @@ export function DocsPage() {
               <div className="grid gap-3 sm:grid-cols-4 text-xs font-mono">
                 <div className="rounded-lg border bg-background/80 p-3 space-y-1">
                   <span className="text-[10px] text-primary uppercase font-bold">Client Layer</span>
-                  <div className="font-semibold text-foreground">SkillsBay CLI</div>
+                  <div className="font-semibold text-foreground">Skillsbay CLI</div>
                   <p className="text-[11px] text-muted-foreground"><CommandText text="npx skillsbay add" /></p>
                   <p className="text-[11px] text-muted-foreground">Interactive prompt / --wallet env</p>
                 </div>
                 <div className="rounded-lg border bg-background/80 p-3 space-y-1">
                   <span className="text-[10px] text-amber-500 uppercase font-bold">Access Layer</span>
-                  <div className="font-semibold text-foreground">SkillsBay Access Service</div>
+                  <div className="font-semibold text-foreground">Skillsbay Access Service</div>
                   <p className="text-[11px] text-muted-foreground">x402 payment challenge</p>
                   <p className="text-[11px] text-muted-foreground">Private entitlement delivery</p>
                 </div>
@@ -755,12 +755,12 @@ npx skillsbay remove substreams-deployer`}
             <div className="border-b pb-4">
               <h2 className="text-2xl font-semibold tracking-tight">4. Supported Agent Integrations</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                SkillsBay natively detects and links skills into the canonical directories of modern agent frameworks.
+                Skillsbay natively detects and links skills into the canonical directories of modern agent frameworks.
               </p>
             </div>
 
             <p className="text-sm text-muted-foreground leading-relaxed">
-              When a skill bundle is delivered, SkillsBay inspects your workspace and system configuration to detect
+              When a skill bundle is delivered, Skillsbay inspects your workspace and system configuration to detect
               which AI tools you run. It links the canonical skill file so your agents immediately gain access without reloading.
             </p>
 

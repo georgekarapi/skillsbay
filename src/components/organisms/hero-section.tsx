@@ -180,7 +180,7 @@ function HeroTerminalCard({
         <div className="mt-3 flex items-center justify-between font-mono text-[11px] text-muted-foreground">
           <span className="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
             <Check className="size-3" />
-            Receipt verified onchain
+            Purchase receipt verified onchain
           </span>
           <span
             className={`inline-block rounded bg-muted/50 px-1.5 py-0.5 text-foreground/80 font-medium ${commandPhaseClass}`}
@@ -232,16 +232,16 @@ export const HeroSection = memo(function HeroSection() {
         <div className="flex flex-col items-start">
           {/* Primary Headline with deliberate editorial line break */}
           <h1 className="text-3xl font-semibold tracking-[-0.035em] text-foreground sm:text-4xl lg:text-[2.75rem] lg:leading-[1.12]">
-            <span>The paid skills registry</span>{" "}
+            <span>Trusted paid skills.</span>{" "}
             <span className="block text-muted-foreground font-normal">
-              for capable agents.
+              Installed where your agent works.
             </span>
           </h1>
 
           {/* Subheading */}
           <p className="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-[15px]">
-            Discover battle-tested workflows and tools. Pay once with USDC,
-            verify on-chain receipts, and run capabilities seamlessly across your agent fleet.
+            Buy versioned private bundles, verify the purchase, and install the
+            unlocked skill directly into your project workspace.
           </p>
 
           {/* Actions Row */}
@@ -264,15 +264,15 @@ export const HeroSection = memo(function HeroSection() {
           <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1.5">
               <span className="size-1 rounded-full bg-primary" />
-              One-time USDC unlock
+              Versioned private bundles
             </span>
             <span className="inline-flex items-center gap-1.5">
               <span className="size-1 rounded-full bg-primary" />
-              Zero-config CLI
+              Project-scoped installs
             </span>
             <span className="inline-flex items-center gap-1.5">
               <span className="size-1 rounded-full bg-primary" />
-              Verifiable proof of purchase
+              On-chain proof of purchase
             </span>
           </div>
         </div>

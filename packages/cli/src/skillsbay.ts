@@ -127,7 +127,7 @@ export async function resolveSkillsbaySkillId(source: string): Promise<string | 
         endpoint(`/v1/skills/${encodeURIComponent(parts[0])}/${encodeURIComponent(parts[1])}`)
       );
       if (response.status === 404) {
-        throw new Error(`Skill "${skillId}" was not found on SkillsBay. Use --fallback to install it directly from GitHub instead.`);
+        throw new Error(`Skill "${skillId}" was not found on Skillsbay. Use --fallback to install it directly from GitHub instead.`);
       }
       if (!response.ok) throw new Error(`${response.status} ${await response.text()}`);
       const payload = await response.json() as { data?: SkillInfo };
@@ -136,7 +136,7 @@ export async function resolveSkillsbaySkillId(source: string): Promise<string | 
       if (error instanceof Error && error.message.startsWith('Skill "')) throw error;
       const detail = describeNetworkError(error);
       throw new Error(
-        `Could not reach the SkillsBay API embedded in this CLI (${apiUrl}) to resolve "${skillId}". ` +
+        `Could not reach the Skillsbay API embedded in this CLI (${apiUrl}) to resolve "${skillId}". ` +
           `Use an explicit Git URL for a repository install while the network is unavailable. (${detail})`
       );
     }
@@ -167,7 +167,7 @@ export async function paymentFetch() {
   const client = new x402Client();
   registerExactEvmScheme(client, {
     signer: privateKeyToAccount(normalizePrivateKey(privateKey)),
-    networks: ['eip155:84532'],
+    networks: [__SKILLSBAY_X402_NETWORK__],
   });
   return wrapFetchWithPayment(fetch, client);
 }
@@ -232,7 +232,7 @@ function normalizePrivateKey(privateKey: string): `0x${string}` {
 
 function authorBundleReadMessage(skillId: string, author: string, issuedAt: string) {
   return [
-    'SkillsBay bundle read authorization',
+    'Skillsbay bundle read authorization',
     `Skill: ${skillId}`,
     `Author: ${author.toLowerCase()}`,
     `Issued at: ${issuedAt}`,

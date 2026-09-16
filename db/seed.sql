@@ -1,4 +1,4 @@
--- Local D1 database seeder for SkillsBay
+-- Local D1 database seeder for Skillsbay
 -- NEVER run this against remote databases. Use strictly with:
 -- wrangler d1 execute skillsbay --local --file=db/seed.sql
 
