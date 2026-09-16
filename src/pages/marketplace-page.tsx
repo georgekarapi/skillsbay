@@ -54,8 +54,8 @@ export function MarketplacePage() {
   const [tab, setTab] = useState<SkillTab>("trending")
 
   usePageSeo({
-    title: "SkillsBay — The Agent Skill Marketplace",
-    description: "Discover, buy, and publish verified skills for AI agents. Run autonomous workflows with x402-enabled payments and instant CLI installation.",
+    title: "Skillsbay — Trusted Paid Agent Skills",
+    description: "Buy versioned private skills, verify the purchase on-chain, and install the unlocked release directly into your agent workspace.",
     canonical: "/",
     ogType: "website",
   })

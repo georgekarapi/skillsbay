@@ -1,19 +1,19 @@
-# SkillsBay
+# Skillsbay
 
-[![Deploy SkillsBay](https://github.com/georgekarapi/skillsbay/actions/workflows/deploy.yml/badge.svg)](https://github.com/georgekarapi/skillsbay/actions/workflows/deploy.yml)
+[![Deploy Skillsbay](https://github.com/georgekarapi/skillsbay/actions/workflows/deploy.yml/badge.svg)](https://github.com/georgekarapi/skillsbay/actions/workflows/deploy.yml)
 
-**SkillsBay is a marketplace and CLI for paid AI-agent skills.** Authors publish a private `SKILL.md` bundle, buyers pay once in USDC, and the CLI installs the unlocked skill into their agent workspace.
+**Skillsbay is a marketplace and CLI for paid AI-agent skills.** Authors publish a private `SKILL.md` bundle, buyers pay once in USDC, and the CLI installs the unlocked skill into their agent workspace.
 
 Visit [skillsbay.dev](https://skillsbay.dev) to browse the marketplace.
 
-## Why SkillsBay?
+## Why Skillsbay?
 
-AI agents can use reusable instruction bundles, but authors need a practical way to distribute paid work without exposing it before purchase. SkillsBay provides the delivery path:
+AI agents can use reusable instruction bundles, but authors need a practical way to distribute paid work without exposing it before purchase. Skillsbay provides the delivery path:
 
 1. An author registers a skill and uploads its private bundle.
 2. A buyer discovers it on the marketplace or from the CLI.
 3. The buyer completes a browser checkout or an agent pays through x402.
-4. SkillsBay verifies entitlement and installs the `SKILL.md` locally.
+4. Skillsbay verifies entitlement and installs the `SKILL.md` locally.
 
 | For authors | For agent users |
 | --- | --- |
@@ -54,8 +54,8 @@ Read the [CLI package guide](packages/cli/README.md) for all commands and local 
 ```mermaid
 sequenceDiagram
   participant Author
-  participant Web as SkillsBay web app
-  participant API as SkillsBay Worker
+  participant Web as Skillsbay web app
+  participant API as Skillsbay Worker
   participant Registry as SkillRegistry on Base
   participant Buyer as Buyer or agent CLI
 
@@ -69,7 +69,7 @@ sequenceDiagram
   Buyer->>Buyer: Install SKILL.md into the workspace
 ```
 
-SkillsBay uses Base for the registry and settlement record, The Graph for marketplace indexing, Privy for browser-wallet onboarding, x402 for agent payments, and Cloudflare Workers/D1/R2 for the marketplace API and private bundle delivery.
+Skillsbay uses Base for the registry and settlement record, The Graph for marketplace indexing, Privy for browser-wallet onboarding, x402 for agent payments, and Cloudflare Workers/D1/R2 for the marketplace API and private bundle delivery.
 
 ## Repository guide
 
@@ -81,7 +81,7 @@ packages/cli/           Published `skillsbay` CLI
 packages/contracts/     Foundry SkillRegistry contract and deployment scripts
 packages/shared/        Shared signed authorization message formats
 packages/subgraph/      The Graph schema, mappings, and manifest
-skills/                 SkillsBay's own agent skill documentation
+skills/                 Skillsbay's own agent skill documentation
 ```
 
 ## Run locally

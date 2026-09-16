@@ -51,7 +51,7 @@ export function SkillLeaderboard({
     }));
     const imported = showImported ? (skillsSh.data ?? []) : [];
 
-    // De-duplicate: native SkillsBay skills win over imported ones with the same slug
+    // De-duplicate: native Skillsbay skills win over imported ones with the same slug
     const seen = new Set(native.map((s) => s.slug));
     const merged = [...native, ...imported.filter((s) => !seen.has(s.slug))];
 

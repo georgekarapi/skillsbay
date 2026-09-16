@@ -1,5 +1,12 @@
 packages:
   - packages/*
+allowBuilds:
+  '@reown/appkit': true
+  bufferutil: true
+  esbuild: true
+  keccak: true
+  utf-8-validate: true
+  workerd: true
 overrides:
   axios@>=1.0.0 <1.18.0: '>=1.18.0'
   axios@>=1.13.0 <1.18.0: '>=1.18.0'

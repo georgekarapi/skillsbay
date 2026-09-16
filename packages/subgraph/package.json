@@ -4,7 +4,10 @@
   "scripts": {
     "codegen": "graph codegen",
     "build": "graph build",
-    "deploy": "graph deploy skillsbay-base-sepolia --version-label v0.1.0"
+    "deploy": "graph deploy skillsbay-base-sepolia --version-label v0.1.0",
+    "codegen:mainnet": "graph codegen subgraph.mainnet.yaml",
+    "build:mainnet": "graph build subgraph.mainnet.yaml",
+    "deploy:mainnet": "graph deploy skillsbay-base-mainnet subgraph.mainnet.yaml --version-label v0.1.0"
   },
   "devDependencies": {
     "@graphprotocol/graph-cli": "^0.98.1",

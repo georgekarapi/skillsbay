@@ -6,8 +6,8 @@ import { ExactEvmScheme } from "@x402/evm/exact/server"
 import { createPublicClient, decodeFunctionData, encodeFunctionData, encodePacked, hexToBigInt, http, keccak256, maxUint256, parseAbi, parseErc6492Signature, stringToHex, verifyMessage } from "viem"
 import { privateKeyToAccount } from "viem/accounts"
 import { createBundlerClient, toSimple7702SmartAccount } from "viem/account-abstraction"
-import { baseSepolia } from "viem/chains"
 import { getBundle, putBundle } from "./storage"
+import { baseNetworkConfig } from "./base-network"
 import { createBundleReadAuthorizationMessage, createInstallRequestAuthorizationMessage, createPublishAuthorizationMessage, createUsernameAuthorizationMessage } from "@skillsbay/shared/publish-authorization"
 import { generateSkillOgPng, generateSkillOgSvg, escapeXml, type OgSkillData } from "./og-image"
 
@@ -23,12 +23,16 @@ type Bindings = {
   GRAPH_API_KEY?: string
   X402_RECIPIENT_ADDRESS?: string
   SKILL_REGISTRY_ADDRESS?: string
+  BASE_CHAIN_ID?: string
+  BASE_RPC_URL?: string
   BASE_SEPOLIA_RPC_URL?: string
   RECORDER_PRIVATE_KEY?: string
   BUNDLER_RPC_URL?: string
   CIRCLE_PAYMASTER_ADDRESS?: string
   CIRCLE_PAYMASTER_PERMIT_USDC?: string
   USDC_ADDRESS?: string
+  X402_NETWORK?: string
+  X402_FACILITATOR_URL?: string
   ASSETS?: { fetch: typeof fetch }
 }
 
@@ -153,8 +157,8 @@ function parseSkillFrontmatter(markdown?: string): { title?: string; description
 }
 
 function injectSkillSeoMeta(html: string, skill: OgSkillData, origin: string, nonce: string): string {
-  const title = `${skill.title} by @${skill.namespace} — SkillsBay`
-  const description = skill.summary || "Discover, buy, and run verified AI agent skills on SkillsBay."
+  const title = `${skill.title} by @${skill.namespace} — Skillsbay`
+  const description = skill.summary || "Discover, buy, and run verified AI agent skills on Skillsbay."
   const url = `${origin}/${skill.namespace}/${skill.slug}`
   const ogImageUrl = `${origin}/v1/skills/${skill.namespace}/${skill.slug}/og.png`
 
@@ -261,7 +265,7 @@ async function getOgSkillData(env: Bindings, namespace: string, slug: string): P
     namespace,
     slug,
     title: slug.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" "),
-    summary: "Discover and run verified AI agent skills on SkillsBay.",
+    summary: "Discover and run verified AI agent skills on Skillsbay.",
     category: "Agent skill",
     priceUsdc: "0.25",
     paidInstalls: 0,
@@ -285,7 +289,7 @@ async function graphListings(env: Bindings): Promise<Listing[] | null> {
       namespace,
       slug,
       title: slug.split("-").map((word) => word[0].toUpperCase() + word.slice(1)).join(" "),
-      summary: "A paid agent skill published on SkillsBay.",
+      summary: "A paid agent skill published on Skillsbay.",
       category: "Agent skill",
       priceUsdc: (Number(skill.price) / 1_000_000).toFixed(2),
       paidInstalls: skill.totalSales,
@@ -402,24 +406,24 @@ const usdcPermitAbi = parseAbi([
 
 const usdcTransferAbi = parseAbi(["function transfer(address to, uint256 value) returns (bool)"])
 
-const BASE_SEPOLIA_USDC = "0x036CbD53842c5426634e7929541eC2318f3dCF7e" as const
-const BASE_SEPOLIA_CIRCLE_PAYMASTER_V08 = "0x3BA9A96eE3eFf3A69E2B18886AcF52027EFF8966" as const
-
 async function sha256Hex(value: string) {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value))
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("")
 }
 
 async function registeredAuthor(env: Bindings, skillId: string) {
-  if (!env.SKILL_REGISTRY_ADDRESS || !env.BASE_SEPOLIA_RPC_URL) return null
-  const client = createPublicClient({ transport: http(env.BASE_SEPOLIA_RPC_URL) })
+  if (!env.SKILL_REGISTRY_ADDRESS) return null
+  const network = baseNetworkConfig(env)
+  const client = createPublicClient({ chain: network.chain, transport: http(network.rpcUrl) })
   const skill = await client.readContract({ address: env.SKILL_REGISTRY_ADDRESS as `0x${string}`, abi: skillRegistryAbi, functionName: "getSkill", args: [keccak256(stringToHex(skillId))] })
   return skill.author
 }
 
 async function recordPurchase(env: Bindings, input: { skillId: string; buyer: string; amount: string; paymentTransactionHash: string }) {
-  if (!env.SKILL_REGISTRY_ADDRESS || !env.RECORDER_PRIVATE_KEY || !env.BASE_SEPOLIA_RPC_URL) throw new Error("Settlement recorder is not configured")
-  const client = createPublicClient({ chain: baseSepolia, transport: http(env.BASE_SEPOLIA_RPC_URL) })
+  if (!env.SKILL_REGISTRY_ADDRESS || !env.RECORDER_PRIVATE_KEY) throw new Error("Settlement recorder is not configured")
+  const network = baseNetworkConfig(env)
+  if (!network.bundlerRpcUrl) throw new Error("Bundler is not configured")
+  const client = createPublicClient({ chain: network.chain, transport: http(network.rpcUrl) })
   // Secret managers commonly store private keys without the `0x` prefix. Accept
   // both representations so a valid recorder key cannot silently break checkout.
   const recorderPrivateKey = (env.RECORDER_PRIVATE_KEY.startsWith("0x") ? env.RECORDER_PRIVATE_KEY : `0x${env.RECORDER_PRIVATE_KEY}`) as `0x${string}`
@@ -427,8 +431,8 @@ async function recordPurchase(env: Bindings, input: { skillId: string; buyer: st
   const configuredRecorder = await client.readContract({ address: env.SKILL_REGISTRY_ADDRESS as `0x${string}`, abi: skillRegistryAbi, functionName: "recorder" })
   if (configuredRecorder.toLowerCase() !== owner.address.toLowerCase()) throw new Error(`Recorder key address ${owner.address} does not match registry recorder ${configuredRecorder}`)
   const account = await toSimple7702SmartAccount({ client, owner })
-  const usdcAddress = (env.USDC_ADDRESS ?? BASE_SEPOLIA_USDC) as `0x${string}`
-  const paymasterAddress = (env.CIRCLE_PAYMASTER_ADDRESS ?? BASE_SEPOLIA_CIRCLE_PAYMASTER_V08) as `0x${string}`
+  const usdcAddress = network.usdcAddress
+  const paymasterAddress = network.circlePaymasterAddress
   const permitAmount = BigInt(env.CIRCLE_PAYMASTER_PERMIT_USDC ?? "10000000")
   const paymaster = {
     async getPaymasterData() {
@@ -438,7 +442,7 @@ async function recordPurchase(env: Bindings, input: { skillId: string; buyer: st
         client.readContract({ address: usdcAddress, abi: usdcPermitAbi, functionName: "nonces", args: [account.address] }),
       ])
       const signedPermit = await account.signTypedData({
-        domain: { name, version, chainId: baseSepolia.id, verifyingContract: usdcAddress },
+        domain: { name, version, chainId: network.chain.id, verifyingContract: usdcAddress },
         // Circle's permit verifier expects the domain definition in the typed data.
         types: {
           EIP712Domain: [{ name: "name", type: "string" }, { name: "version", type: "string" }, { name: "chainId", type: "uint256" }, { name: "verifyingContract", type: "address" }],
@@ -467,12 +471,12 @@ async function recordPurchase(env: Bindings, input: { skillId: string; buyer: st
         return { maxFeePerGas: hexToBigInt(standard.maxFeePerGas), maxPriorityFeePerGas: hexToBigInt(standard.maxPriorityFeePerGas) }
       },
     },
-    transport: http(env.BUNDLER_RPC_URL ?? `https://public.pimlico.io/v2/${baseSepolia.id}/rpc`),
+    transport: http(network.bundlerRpcUrl),
   })
   const userOperationHash = await bundler.sendUserOperation({
     account,
     calls: [{ to: env.SKILL_REGISTRY_ADDRESS as `0x${string}`, data: encodeFunctionData({ abi: skillRegistryAbi, functionName: "recordPurchase", args: [keccak256(stringToHex(input.skillId)), input.buyer as `0x${string}`, BigInt(input.amount), input.paymentTransactionHash as `0x${string}`] }) }],
-    authorization: await owner.signAuthorization({ chainId: baseSepolia.id, nonce: await client.getTransactionCount({ address: owner.address }), contractAddress: account.authorization.address }),
+    authorization: await owner.signAuthorization({ chainId: network.chain.id, nonce: await client.getTransactionCount({ address: owner.address }), contractAddress: account.authorization.address }),
   })
   await bundler.waitForUserOperationReceipt({ hash: userOperationHash })
 }
@@ -605,7 +609,7 @@ app.get("/v1/install-requests/:id/validate", async (c) => {
   return c.json({ valid: true, data: { id: request.id, skillId: request.skill_id, status: request.status, expiresAt: request.expires_at } })
 })
 app.post("/v1/install-requests/:id/complete", async (c) => {
-  if (!c.env.SKILL_REGISTRY_ADDRESS || !c.env.BASE_SEPOLIA_RPC_URL) return c.json({ error: "Registry verification is not configured" }, 503)
+  if (!c.env.SKILL_REGISTRY_ADDRESS) return c.json({ error: "Registry verification is not configured" }, 503)
   const request = await c.env.DB.prepare("SELECT id, skill_id, status, expires_at FROM install_requests WHERE id = ?").bind(c.req.param("id")).first<{ id: string; skill_id: string; status: "pending" | "completed"; expires_at: string }>()
   const payload = await c.req.json<{ buyer?: string; issuedAt?: string; signature?: string }>().catch(() => ({}))
   if (!request || request.status !== "pending" || Date.parse(request.expires_at) <= Date.now() || !payload.buyer || !isWalletAddress(payload.buyer) || !payload.issuedAt || !payload.signature) return c.json({ error: "A signed entitled wallet is required" }, 400)
@@ -614,7 +618,8 @@ app.post("/v1/install-requests/:id/complete", async (c) => {
   const buyer = payload.buyer.toLowerCase()
   const message = createInstallRequestAuthorizationMessage({ installRequestId: request.id, skillId: request.skill_id, buyer, issuedAt: payload.issuedAt })
   if (!await verifyMessage({ address: buyer as `0x${string}`, message, signature: payload.signature as `0x${string}` })) return c.json({ error: "Invalid install authorization" }, 401)
-  const client = createPublicClient({ chain: baseSepolia, transport: http(c.env.BASE_SEPOLIA_RPC_URL) })
+  const network = baseNetworkConfig(c.env)
+  const client = createPublicClient({ chain: network.chain, transport: http(network.rpcUrl) })
   const [purchased, chainAuthor] = await Promise.all([
     client.readContract({ address: c.env.SKILL_REGISTRY_ADDRESS as `0x${string}`, abi: skillRegistryAbi, functionName: "hasPurchased", args: [keccak256(stringToHex(request.skill_id)), buyer as `0x${string}`] }),
     registeredAuthor(c.env, request.skill_id),
@@ -651,11 +656,12 @@ app.post("/v1/install-requests/:namespace/:slug", async (c) => {
   return c.json({ data: { id, redemptionToken: token, expiresAt } }, 201)
 })
 app.get("/v1/skills/:namespace/:slug/access/:buyer", async (c) => {
-  if (!c.env.SKILL_REGISTRY_ADDRESS || !c.env.BASE_SEPOLIA_RPC_URL) return c.json({ error: "Registry verification is not configured" }, 503)
+  if (!c.env.SKILL_REGISTRY_ADDRESS) return c.json({ error: "Registry verification is not configured" }, 503)
   const skillId = skillIdFromParams(c.req)
   const buyer = c.req.param("buyer")
   if (!splitSkillId(skillId) || !isWalletAddress(buyer)) return c.json({ error: "Invalid skill or wallet" }, 400)
-  const client = createPublicClient({ chain: baseSepolia, transport: http(c.env.BASE_SEPOLIA_RPC_URL) })
+  const network = baseNetworkConfig(c.env)
+  const client = createPublicClient({ chain: network.chain, transport: http(network.rpcUrl) })
   const [purchased, chainAuthor] = await Promise.all([
     client.readContract({ address: c.env.SKILL_REGISTRY_ADDRESS as `0x${string}`, abi: skillRegistryAbi, functionName: "hasPurchased", args: [keccak256(stringToHex(skillId)), buyer as `0x${string}`] }),
     registeredAuthor(c.env, skillId),
@@ -668,7 +674,7 @@ app.post("/v1/purchases/:namespace/:slug", async (c) => {
   if (rateLimited) return rateLimited
   const skillId = skillIdFromParams(c.req)
   if (!splitSkillId(skillId)) return c.json({ error: "Invalid skill ID" }, 400)
-  if (!c.env.SKILL_REGISTRY_ADDRESS || !c.env.RECORDER_PRIVATE_KEY || !c.env.BASE_SEPOLIA_RPC_URL) return c.json({ error: "Checkout is not configured", code: "CHECKOUT_NOT_CONFIGURED" }, 503)
+  if (!c.env.SKILL_REGISTRY_ADDRESS || !c.env.RECORDER_PRIVATE_KEY) return c.json({ error: "Checkout is not configured", code: "CHECKOUT_NOT_CONFIGURED" }, 503)
   const skill = (await listings(c.env)).data.find((item) => item.id === skillId)
   if (!skill) return c.json({ error: "Skill not found" }, 404)
   const payload = await c.req.json<{ buyer?: string; paymentTransactionHash?: string; installRequestId?: string }>().catch(() => ({}))
@@ -678,9 +684,10 @@ app.post("/v1/purchases/:namespace/:slug", async (c) => {
     if (!installRequest || installRequest.skill_id !== skillId || installRequest.status !== "pending" || Date.parse(installRequest.expires_at) <= Date.now()) return c.json({ error: "Install request is invalid or expired" }, 400)
   }
   try {
-    const client = createPublicClient({ chain: baseSepolia, transport: http(c.env.BASE_SEPOLIA_RPC_URL) })
+    const network = baseNetworkConfig(c.env)
+    const client = createPublicClient({ chain: network.chain, transport: http(network.rpcUrl) })
     const [transaction, receipt] = await Promise.all([client.getTransaction({ hash: payload.paymentTransactionHash as `0x${string}` }), client.waitForTransactionReceipt({ hash: payload.paymentTransactionHash as `0x${string}`, confirmations: 1, timeout: 60_000 })])
-    const usdcAddress = (c.env.USDC_ADDRESS ?? BASE_SEPOLIA_USDC).toLowerCase()
+    const usdcAddress = network.usdcAddress.toLowerCase()
     if (receipt.status !== "success" || transaction.from.toLowerCase() !== payload.buyer.toLowerCase() || transaction.to?.toLowerCase() !== usdcAddress) return c.json({ error: "Payment transaction does not match this buyer" }, 400)
     const decoded = decodeFunctionData({ abi: usdcTransferAbi, data: transaction.input })
     const [recipient, amount] = decoded.args as readonly [`0x${string}`, bigint]
@@ -852,11 +859,12 @@ app.get("/v1/install/:namespace/:slug/content", async (c) => {
   if (!splitSkillId(skillId)) return c.json({ error: "Invalid skill ID" }, 400)
   const skill = (await listings(c.env)).data.find((item) => item.id === skillId)
   if (!skill) return c.json({ error: "Skill not found" }, 404)
-  if (!c.env.X402_RECIPIENT_ADDRESS || !c.env.SKILL_REGISTRY_ADDRESS || !c.env.RECORDER_PRIVATE_KEY || !c.env.BASE_SEPOLIA_RPC_URL) return c.json({ error: "x402 checkout is not configured", code: "X402_NOT_CONFIGURED" }, 503)
+  if (!c.env.X402_RECIPIENT_ADDRESS || !c.env.SKILL_REGISTRY_ADDRESS || !c.env.RECORDER_PRIVATE_KEY) return c.json({ error: "x402 checkout is not configured", code: "X402_NOT_CONFIGURED" }, 503)
   if (c.env.X402_RECIPIENT_ADDRESS.toLowerCase() !== c.env.SKILL_REGISTRY_ADDRESS.toLowerCase()) return c.json({ error: "x402 recipient must be the SkillRegistry", code: "X402_RECIPIENT_MISMATCH" }, 503)
   const markdown = await getBundle({ db: c.env.DB, bucket: c.env.SKILL_BUNDLES, skillId })
   if (!markdown) return c.json({ error: "Bundle is unavailable; no payment was requested", code: "BUNDLE_UNAVAILABLE" }, 503)
-  const resourceServer = new x402ResourceServer(new HTTPFacilitatorClient({ url: "https://x402.org/facilitator" })).register("eip155:84532", new ExactEvmScheme())
+  const network = baseNetworkConfig(c.env)
+  const resourceServer = new x402ResourceServer(new HTTPFacilitatorClient({ url: network.x402FacilitatorUrl })).register(network.x402Network, new ExactEvmScheme())
   await resourceServer.initialize()
   resourceServer.onAfterSettle(async ({ result, requirements }) => {
     if (!result.success || !result.payer || !result.amount) throw new Error("x402 settlement did not return a complete purchase receipt")
@@ -875,7 +883,7 @@ app.get("/v1/install/:namespace/:slug/content", async (c) => {
     }
   })
   const gate = paymentMiddleware(
-    { "GET /v1/install/:namespace/:slug/content": { accepts: { scheme: "exact", network: "eip155:84532", price: `$${skill.priceUsdc}`, payTo: c.env.X402_RECIPIENT_ADDRESS } } },
+    { "GET /v1/install/:namespace/:slug/content": { accepts: { scheme: "exact", network: network.x402Network, price: `$${skill.priceUsdc}`, payTo: c.env.X402_RECIPIENT_ADDRESS } } },
     resourceServer,
     undefined,
     undefined,
@@ -956,7 +964,7 @@ app.post("/v1/publish/bundles/:namespace/:slug", async (c) => {
   if (split) {
     const frontmatter = parseSkillFrontmatter(payload.markdown)
     const title = frontmatter.title || split.slug.split("-").map((word) => word[0].toUpperCase() + word.slice(1)).join(" ")
-    const summary = frontmatter.description || "A published skill on SkillsBay."
+    const summary = frontmatter.description || "A published skill on Skillsbay."
     const category = payload.category || "Agent skill"
     try {
       await c.env.DB.prepare(`
@@ -996,7 +1004,7 @@ async function fetchSkillsShLeaderboard(): Promise<SkillsShEntry[]> {
   if (skillsShCache && now - skillsShCache.fetchedAt < SKILLS_SH_CACHE_TTL) return skillsShCache.data
 
   try {
-    const response = await fetch("https://skills.sh", { headers: { "accept": "text/html", "user-agent": "SkillsBay/1.0 (marketplace import)" } })
+    const response = await fetch("https://skills.sh", { headers: { "accept": "text/html", "user-agent": "Skillsbay/1.0 (marketplace import)" } })
     if (!response.ok) throw new Error(`skills.sh returned ${response.status}`)
     const html = await response.text()
 

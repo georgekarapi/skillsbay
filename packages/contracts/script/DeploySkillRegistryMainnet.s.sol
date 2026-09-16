@@ -4,7 +4,7 @@ pragma solidity ^0.8.28;
 import {Script} from "forge-std/Script.sol";
 import {SkillRegistry} from "../src/SkillRegistry.sol";
 
-/// @notice Mainnet-only deployment path. The SkillsBay Safe permanently owns
+/// @notice Mainnet-only deployment path. The Skillsbay Safe permanently owns
 /// the registry and receives platform fees from its first block.
 contract DeploySkillRegistryMainnet is Script {
     error WrongChain(uint256 chainId);

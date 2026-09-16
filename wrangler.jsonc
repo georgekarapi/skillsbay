@@ -31,10 +31,17 @@
 	},
 	"vars": {
 		"APP_ENV": "production",
-		"BASE_SEPOLIA_RPC_URL": "https://sepolia.base.org",
-		"GRAPH_API_URL": "https://api.studio.thegraph.com/query/89068/skillsbay-base-sepolia/v0.1.0",
-		"SKILL_REGISTRY_ADDRESS": "0x5b8A22f1dc11f38333469BEBd6d6Fe2852eA3f1D",
-		"X402_RECIPIENT_ADDRESS": "0x5b8A22f1dc11f38333469BEBd6d6Fe2852eA3f1D",
+		"BASE_CHAIN_ID": "8453",
+		"BASE_RPC_URL": "https://mainnet.base.org",
+		"GRAPH_API_URL": "https://api.studio.thegraph.com/query/89068/skillsbay-base-mainnet/v0.1.0",
+		"SKILL_REGISTRY_ADDRESS": "0x9E2BDB2D1c61C5B9Dee8D7e9E08DDAcCb18bFe06",
+		"X402_RECIPIENT_ADDRESS": "0x9E2BDB2D1c61C5B9Dee8D7e9E08DDAcCb18bFe06",
+		"USDC_ADDRESS": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+		"X402_NETWORK": "eip155:8453",
+		"X402_FACILITATOR_URL": "https://facilitator.payai.network",
+		"BUNDLER_RPC_URL": "https://public.pimlico.io/v2/8453/rpc",
+		"CIRCLE_PAYMASTER_ADDRESS": "0x6C973eBe80dCD8660841D4356bf15c32460271C9",
+		"CIRCLE_PAYMASTER_PERMIT_USDC": "10000000",
 	},
 	"d1_databases": [
 		{

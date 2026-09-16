@@ -9,7 +9,7 @@ case "${1:-}" in
   --help|-h)
     echo "Usage: ./script/deploy-registry.sh [--mainnet]"
     echo "  Default: Base Sepolia; deployer is owner and treasury."
-    echo "  --mainnet: Base mainnet; SkillsBay Safe is owner and treasury."
+    echo "  --mainnet: Base mainnet; Skillsbay Safe is owner and treasury."
     exit 0
     ;;
   *)

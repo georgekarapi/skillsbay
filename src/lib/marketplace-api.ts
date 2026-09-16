@@ -19,7 +19,7 @@ export function endpoint(path: string) {
 }
 
 function normalizeSkill(skill: ApiListing, index: number): Skill {
-  return { ...skill, rank: skill.rank ?? index + 1, summary: skill.summary ?? "A paid agent skill published on SkillsBay.", category: skill.category ?? "Agent skill", trend: skill.trend ?? 0, authorAddress: skill.authorAddress ?? skill.author, updatedAt: skill.updatedAt ?? "Indexed on-chain" } as Skill
+  return { ...skill, rank: skill.rank ?? index + 1, summary: skill.summary ?? "A paid agent skill published on Skillsbay.", category: skill.category ?? "Agent skill", trend: skill.trend ?? 0, authorAddress: skill.authorAddress ?? skill.author, updatedAt: skill.updatedAt ?? "Indexed on-chain" } as Skill
 }
 
 export async function getMarketplaceSkills() {
