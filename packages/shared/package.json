@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "exports": {
-    "./publish-authorization": "./publish-authorization.ts"
+    "./publish-authorization": "./publish-authorization.ts",
+    "./skill-security": "./skill-security.ts"
   }
 }

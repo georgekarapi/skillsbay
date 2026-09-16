@@ -9,6 +9,7 @@ import { createBundlerClient, toSimple7702SmartAccount } from "viem/account-abst
 import { getBundle, putBundle } from "./storage"
 import { baseNetworkConfig } from "./base-network"
 import { createBundleReadAuthorizationMessage, createInstallRequestAuthorizationMessage, createPublishAuthorizationMessage, createUsernameAuthorizationMessage } from "@skillsbay/shared/publish-authorization"
+import { hasBlockingSkillSecurityFinding, scanSkillBundle } from "@skillsbay/shared/skill-security"
 import { generateSkillOgPng, generateSkillOgSvg, escapeXml, type OgSkillData } from "./og-image"
 
 type Bindings = {
@@ -901,6 +902,10 @@ app.put("/v1/internal/bundles/:namespace/:slug", async (c) => {
   const payload = await c.req.json<{ markdown?: string }>().catch(() => ({}))
   if (!payload.markdown?.startsWith("---")) return c.json({ error: "A single frontmatter-based SKILL.md bundle is required" }, 400)
   if (payload.markdown.length > 512_000) return c.json({ error: "SKILL.md must be 500 KB or smaller" }, 413)
+  const findings = scanSkillBundle(payload.markdown)
+  if (hasBlockingSkillSecurityFinding(findings)) {
+    return c.json({ error: "Bundle contains blocked security findings", code: "BUNDLE_SECURITY_BLOCKED", findings }, 422)
+  }
   const stored = await putBundle({ db: c.env.DB, bucket: c.env.SKILL_BUNDLES, skillId, markdown: payload.markdown })
   return c.json({ data: { skillId, ...stored } }, 201)
 })
@@ -933,6 +938,11 @@ app.post("/v1/publish/bundles/:namespace/:slug", async (c) => {
   type PublishPayload = { markdown?: string; author?: string; issuedAt?: string; signature?: string; category?: string }
   const payload = await c.req.json<PublishPayload>().catch((): PublishPayload => ({}))
   if (!payload.markdown?.startsWith("---")) return c.json({ error: "A single frontmatter-based SKILL.md bundle is required" }, 400)
+  if (payload.markdown.length > 512_000) return c.json({ error: "SKILL.md must be 500 KB or smaller" }, 413)
+  const findings = scanSkillBundle(payload.markdown)
+  if (hasBlockingSkillSecurityFinding(findings)) {
+    return c.json({ error: "Bundle contains blocked security findings", code: "BUNDLE_SECURITY_BLOCKED", findings }, 422)
+  }
   if (!payload.author || !/^0x[0-9a-fA-F]{40}$/.test(payload.author) || !payload.signature || !payload.issuedAt) return c.json({ error: "A signed author wallet is required" }, 401)
   const issuedAt = Date.parse(payload.issuedAt)
   if (!Number.isFinite(issuedAt) || Math.abs(Date.now() - issuedAt) > 10 * 60 * 1_000) return c.json({ error: "Publish authorization expired; sign again", code: "AUTHORIZATION_EXPIRED" }, 401)

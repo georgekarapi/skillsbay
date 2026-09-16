@@ -28,6 +28,7 @@ import {
   publishBundle,
 } from "@/lib/marketplace-api";
 import { MarketplaceShell } from "@/components/templates/marketplace-shell";
+import { SkillSecurityScanDialog } from "@/components/organisms/skill-security-scan-dialog";
 import {
   Select,
   SelectContent,
@@ -79,6 +80,7 @@ export function PublishSkillPage() {
   const [category, setCategory] = useState<string>("Agent tooling");
   const [markdown, setMarkdown] = useState(initialMarkdown);
   const [publishing, setPublishing] = useState(false);
+  const [scanOpen, setScanOpen] = useState(false);
   const registryAddress = import.meta.env.VITE_SKILL_REGISTRY_ADDRESS as
     | string
     | undefined;
@@ -183,8 +185,38 @@ export function PublishSkillPage() {
     }
   }
 
-  async function publish(event: FormEvent<HTMLFormElement>) {
+  function publish(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!author.authenticated) return author.login();
+    if (!namespace) {
+      toast.error("Choose a username before publishing.");
+      return;
+    }
+    if (!canPublish || !registryAddress || !author.walletAddress) return;
+    const normalizedSlug = title.trim().toLowerCase();
+    if (
+      !skillNamePattern.test(namespace) ||
+      !skillNamePattern.test(normalizedSlug)
+    ) {
+      toast.error(
+        "Use lowercase letters, numbers, and hyphens only—no spaces.",
+      );
+      return;
+    }
+    if (!markdown.startsWith("---")) {
+      toast.error("SKILL.md needs YAML frontmatter beginning with ---.");
+      return;
+    }
+    try {
+      parseUsdc(price.trim());
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Invalid price.");
+      return;
+    }
+    setScanOpen(true);
+  }
+
+  async function publishConfirmed() {
     if (!author.authenticated) return author.login();
     if (!namespace) return;
     if (!canPublish || !registryAddress || !author.walletAddress) return;
@@ -387,6 +419,16 @@ export function PublishSkillPage() {
           </CardContent>
         </Card>
       </div>
+      <SkillSecurityScanDialog
+        markdown={markdown}
+        onOpenChange={setScanOpen}
+        onProceed={() => {
+          setScanOpen(false);
+          void publishConfirmed();
+        }}
+        open={scanOpen}
+        proceedLabel="Register & publish"
+      />
     </MarketplaceShell>
   );
 }
