@@ -14,7 +14,8 @@ function formatInstallCount(count: number): string {
 export const SkillRow = memo(function SkillRow({ skill, displayRank }: { skill: Skill; displayRank: number }) {
   const [copied, setCopied] = useState(false)
   const isImported = skill.source === "skills.sh"
-  const cliCommand = `npx skillsbay add ${skill.author}/${skill.slug} --fallback`
+  const hasTrend = skill.trend > 0
+  const cliCommand = `npx skillsbay add ${skill.author}@${skill.slug} --fallback`
 
   const handleImportedClick = async (e: React.MouseEvent) => {
     e.preventDefault()
@@ -80,9 +81,13 @@ export const SkillRow = memo(function SkillRow({ skill, displayRank }: { skill: 
             {copied ? "copied" : "copy cli"}
           </span>
         ) : (
-          <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-            <TrendingUp className="size-3" />+{skill.trend}%
-          </span>
+          hasTrend ? (
+            <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+              <TrendingUp className="size-3" />+{skill.trend}%
+            </span>
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          )
         )}
         <ArrowUpRight className="ml-auto size-3 text-muted-foreground sm:hidden" />
       </div>

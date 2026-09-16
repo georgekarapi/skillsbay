@@ -115,7 +115,7 @@ export async function getAuthorBundle(input: BundleReadAuthorization & { signatu
     body: JSON.stringify(input),
   })
   const payload = await response.json().catch(() => ({})) as { data?: { markdown: string }; error?: string; code?: string }
-  if (!response.ok) throw new MarketplaceApiError(payload.error ?? "Could not load the encrypted bundle", response.status, payload.code)
+  if (!response.ok) throw new MarketplaceApiError(payload.error ?? "Could not load the private bundle", response.status, payload.code)
   return payload.data!.markdown
 }
 

@@ -1,6 +1,6 @@
 import { memo, useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
-import { ArrowRight, Check, Copy, Terminal } from "lucide-react"
+import { Check, Copy, Terminal } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -8,15 +8,15 @@ import { getMarketplaceSkills } from "@/lib/marketplace-api"
 import { CommandText } from "@/components/molecules/command-text"
 
 const FALLBACK_SKILLS = [
-  { slug: "thegraph/substreams-deployer", label: "substreams-deployer", price: "0.25 USDC" },
-  { slug: "defi/audited-automation", label: "audited-automation", price: "0.80 USDC" },
-  { slug: "openai/evals-rig", label: "evals-rig", price: "0.35 USDC" },
+  { slug: "thegraph/substreams-deployer", label: "substreams-deployer", price: "0.25 USDC", fallback: true },
+  { slug: "defi/audited-automation", label: "audited-automation", price: "0.80 USDC", fallback: true },
+  { slug: "openai/evals-rig", label: "evals-rig", price: "0.35 USDC", fallback: true },
 ]
 
 function HeroTerminalCard({
   skills,
 }: {
-  skills: Array<{ slug: string; label: string; price: string }>
+  skills: Array<{ slug: string; label: string; price: string; fallback?: boolean }>
 }) {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
@@ -29,7 +29,7 @@ function HeroTerminalCard({
   const [phase, setPhase] = useState<"idle" | "exit" | "enter">("idle")
 
   const activeSkill = skills[selectedIndex % skills.length] ?? skills[0] ?? FALLBACK_SKILLS[0]
-  const command = `npx skillsbay add ${displayedSkill.slug}`
+  const command = `npx skillsbay add ${displayedSkill.slug}${displayedSkill.fallback ? " --fallback" : ""}`
 
   // When selectedIndex changes, run exit → swap → enter
   useEffect(() => {
@@ -167,6 +167,9 @@ function HeroTerminalCard({
                 <span className="inline-block font-semibold text-primary font-mono">
                   {displayedSkill.slug}
                 </span>
+                {displayedSkill.fallback && (
+                  <span className="ml-2 inline-block text-muted-foreground font-mono">--fallback</span>
+                )}
                 <span
                   aria-hidden="true"
                   className="ml-1 inline-block h-3.5 w-1.5 animate-pulse bg-primary/70 align-middle"
@@ -211,14 +214,6 @@ export const HeroSection = memo(function HeroSection() {
     return FALLBACK_SKILLS
   }, [skillsData])
 
-  const scrollToMarketplace = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.preventDefault()
-    const target = document.getElementById("marketplace")
-    if (target) {
-      target.scrollIntoView({ behavior: "smooth", block: "start" })
-    }
-  }
-
   return (
     <section className="relative mb-6 border-b pb-7 pt-1 sm:mb-8 sm:pb-8 sm:pt-2">
       {/* Subtle ambient radial lighting with GPU layer promotion */}
@@ -247,13 +242,6 @@ export const HeroSection = memo(function HeroSection() {
           {/* Actions Row */}
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <Button asChild className="h-10 gap-2 px-5 text-sm font-medium shadow-xs">
-              <a href="#marketplace" onClick={scrollToMarketplace}>
-                Explore Skills
-                <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
-              </a>
-            </Button>
-
-            <Button asChild variant="outline" className="h-10 px-4 text-sm font-medium">
               <Link to="/dashboard/skills/new">
                 Publish a skill
               </Link>

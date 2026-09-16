@@ -249,7 +249,7 @@ export function PublishSkillPage() {
         authorAddress: author.walletAddress,
       });
       toast.success("Skill published", {
-        description: "The encrypted bundle is ready for x402 installs.",
+        description: "The private bundle is ready for x402 installs.",
       });
       navigate("/dashboard");
     } catch (error) {
@@ -292,7 +292,7 @@ export function PublishSkillPage() {
         </h1>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
           Your embedded wallet registers metadata on-chain, then signs the
-          encrypted bundle upload to Skillsbay.
+            private bundle upload to Skillsbay.
         </p>
         <Card className="mt-7">
           <CardHeader>
@@ -370,7 +370,7 @@ export function PublishSkillPage() {
               </label>
               <div className="flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <LockKeyhole className="size-3.5" /> One encrypted bundle ·
+                  <LockKeyhole className="size-3.5" /> One private bundle ·
                   95% author royalty
                 </div>
                 <Button
