@@ -159,20 +159,20 @@ function HeroTerminalCard({
           }}
           className="cursor-pointer rounded-lg border border-border/70 bg-muted/40 p-3.5 font-mono text-xs transition-colors hover:border-primary/40 hover:bg-muted/60"
         >
-          <div className="flex items-center justify-between gap-2 overflow-x-auto py-0.5">
-            <div className={`flex items-center gap-2 ${commandPhaseClass}`}>
-              <span className="select-none text-muted-foreground/60 font-mono">$</span>
-              <span className="text-foreground font-mono"><CommandText text="npx skillsbay add" /></span>
-              <div className="inline-flex items-center">
-                <span className="inline-block font-semibold text-primary font-mono">
+          <div className="flex min-w-0 items-center justify-between gap-2 py-0.5">
+            <div className={`flex min-w-0 items-center gap-2 ${commandPhaseClass}`}>
+              <span className="shrink-0 select-none text-muted-foreground/60 font-mono">$</span>
+              <span className="shrink-0 text-foreground font-mono"><CommandText text="npx skillsbay add" /></span>
+              <div className="flex min-w-0 items-center">
+                <span className="block truncate font-semibold text-primary font-mono" title={displayedSkill.slug}>
                   {displayedSkill.slug}
                 </span>
                 {displayedSkill.fallback && (
-                  <span className="ml-2 inline-block text-muted-foreground font-mono">--fallback</span>
+                  <span className="ml-2 shrink-0 text-muted-foreground font-mono">--fallback</span>
                 )}
                 <span
                   aria-hidden="true"
-                  className="ml-1 inline-block h-3.5 w-1.5 animate-pulse bg-primary/70 align-middle"
+                  className="ml-1 inline-block h-3.5 w-1.5 shrink-0 animate-pulse bg-primary/70 align-middle"
                 />
               </div>
             </div>
